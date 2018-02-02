@@ -156,3 +156,5 @@ crashlytics-build.properties
 fabric.properties
 
 code/LSTM_AE/logs/
+berka_dataset/original/
+berka_dataset/parsed/
