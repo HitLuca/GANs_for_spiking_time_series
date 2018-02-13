@@ -35,7 +35,7 @@ def create_folders():
     return folder_name
 
 
-class ResultPlotter(keras.callbacks.Callback):
+class AEResultPlotter(keras.callbacks.Callback):
     def __init__(self, dataset, model, plots_folder):
         super().__init__()
         self._dataset = dataset
@@ -51,6 +51,31 @@ class ResultPlotter(keras.callbacks.Callback):
             plt.subplot(4, 2, i + 1)
             plt.plot(self._dataset[indexes[i]])
             result = self._model.predict(np.expand_dims(self._dataset[indexes[i]], 0))
+            plt.plot(result.T)
+            plt.xticks([])
+            plt.ylim(-1, 1)
+            plt.yticks([])
+        plt.tight_layout()
+        plt.savefig(self._plots_folder + str(epoch) + '.png')
+        plt.close()
+
+
+class AAEResultPlotter:
+    def __init__(self, dataset, encoder, decoder, plots_folder):
+        self._dataset = dataset
+        self._encoder = encoder
+        self._decoder = decoder
+        self._plots_folder = plots_folder
+
+    def plot_results(self, epoch):
+        plt.subplots(4, 2, figsize=(10, 6))
+        N = self._dataset.shape[0]
+
+        indexes = np.random.choice(N, 8, replace=False)
+        for i in range(8):
+            plt.subplot(4, 2, i + 1)
+            plt.plot(self._dataset[indexes[i]])
+            result = self._decoder.predict(self._encoder.predict(np.expand_dims(self._dataset[indexes[i]], 0)))
             plt.plot(result.T)
             plt.xticks([])
             plt.ylim(-1, 1)

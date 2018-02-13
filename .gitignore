@@ -174,8 +174,3 @@ venv.bak/
 
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebook
-
-code/LSTM_AutoEncoder/logs/
-berka_dataset/original
-berka_dataset/parsed
-code/old
