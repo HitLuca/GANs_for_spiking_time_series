@@ -1,35 +1,26 @@
-from datetime import datetime
-import os
 import keras
 import keras.backend as K
-import tensorflow as tf
 from keras import Input, Model
-from keras.callbacks import ReduceLROnPlateau
-from keras.layers import Lambda, LSTM, RepeatVector, Dense, TimeDistributed, Bidirectional, Concatenate
-from matplotlib import pyplot as plt
-from scipy import io
-from sklearn.preprocessing import MinMaxScaler
-import numpy as np
+from keras.layers import Lambda, LSTM, RepeatVector, Dense, TimeDistributed, Bidirectional
 
 
 class LSTM_AutoEncoder:
-    def __init__(self, timesteps, latent_dim, reverse):
+    def __init__(self, timesteps, lstm_size, latent_dim):
         model_inputs = Input(shape=(timesteps,))
         expanded_inputs = Lambda(lambda x: K.expand_dims(x, -1))(model_inputs)
-        encoder_outputs, encoder_h, encoder_c = LSTM(latent_dim, return_sequences=False, return_state=True)(
-            expanded_inputs)
-        encoder_state = [encoder_h, encoder_c]
+        encoded_input = Bidirectional(LSTM(lstm_size, return_sequences=False))(expanded_inputs)
+        encoded_input = Dense(latent_dim, activation='tanh')(encoded_input)
 
-        decoder_inputs = Input(shape=(1,))
-        repeated_inputs = RepeatVector(timesteps)(decoder_inputs)
-        decoder_outputs = LSTM(latent_dim, return_sequences=True, go_backwards=reverse)(repeated_inputs, initial_state=encoder_state)
-        decoder_outputs = TimeDistributed(Dense(1, activation='sigmoid'))(decoder_outputs)
+        repeated_inputs = RepeatVector(timesteps)(encoded_input)
+
+        decoder_outputs = Bidirectional(LSTM(lstm_size, return_sequences=True))(repeated_inputs)
+        decoder_outputs = TimeDistributed(Dense(1, activation='tanh'))(decoder_outputs)
 
         model_outputs = Lambda(lambda x: K.squeeze(x, -1))(decoder_outputs)
 
-        self._sequence_autoencoder = Model([model_inputs, decoder_inputs], model_outputs)
+        self._sequence_autoencoder = Model(model_inputs, model_outputs)
 
     def get_model(self, lr):
-        optimizer = keras.optimizers.Adam(lr=lr, epsilon=1e-08, amsgrad=True)
+        optimizer = keras.optimizers.Adam(lr=lr, epsilon=1e-08, amsgrad=True, clipnorm=1.0)
         self._sequence_autoencoder.compile(loss='mse', optimizer=optimizer)
         return self._sequence_autoencoder

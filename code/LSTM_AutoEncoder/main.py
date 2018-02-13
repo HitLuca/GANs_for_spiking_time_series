@@ -1,68 +1,64 @@
-from datetime import datetime
-import os
-import keras
-import keras.backend as K
-import tensorflow as tf
-from keras import Input, Model
-from keras.callbacks import ReduceLROnPlateau
-from keras.layers import Lambda, LSTM, RepeatVector, Dense, TimeDistributed, Bidirectional, Concatenate
-from matplotlib import pyplot as plt
-from scipy import io
-from sklearn.preprocessing import MinMaxScaler
-import numpy as np
+import json
 
-from LSTM_AutoEncoder import LSTM_AutoEncoder
+from keras.callbacks import ReduceLROnPlateau, TensorBoard
+from keras.models import load_model
 
-config = tf.ConfigProto(device_count={'GPU': 1})
-sess = tf.Session(config=config)
-keras.backend.set_session(sess)
+from code.LSTM_AutoEncoder.LSTM_AutoEncoder import LSTM_AutoEncoder
+from code.LSTM_AutoEncoder.utils import *
 
+balances_filepath = "/home/luca/PycharmProjects/Master-thesis/berka_dataset/parsed/sparse_balances.mtx"
+continue_training = False
 
-class ResultPlotter(keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs={}):
-        plt.subplots(2, 2, figsize=(10, 3))
-        indexes = range(4)
-        for i in range(4):
-            plt.subplot(2, 2, i + 1)
-            plt.plot(sparse_balances[indexes[i], -timesteps:])
-            result = sequence_autoencoder.predict([np.reshape(sparse_balances[indexes[i], -timesteps:], (1, timesteps)), np.zeros((datapoints))])
-            plt.plot(result.T)
-            plt.xticks([])
-            plt.ylim(0, 1)
-            plt.yticks([])
-        plt.tight_layout()
-        plt.savefig('logs/' + folder_name + '/img/' + str(epoch) + '.png')
-        plt.close()
-        return
+if continue_training:
+    folder_name = '2018-02-13_11-09-11'
+    config_filepath = 'logs/' + folder_name + '/config.json'
+    config = json.load(open(config_filepath, 'r'))
 
+    batch_num = config['batch_num']
+    timesteps = config['timesteps']
+    epochs = config['epochs']
+    epoch = config['epoch'] + 1
 
-folder_name = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-os.makedirs('logs/' + folder_name + '/img/')
+    sequence_autoencoder = load_model('logs/' + folder_name + '/model.h5')
+else:
+    timesteps = 100
+    batch_num = 32
+    lstm_size = 256
+    latent_dim = 16
+    lr = 0.005
+    epoch = 0
+    epochs = int(1e9)
 
-sparse_balances = io.mmread("/home/luca/PycharmProjects/Master-thesis/berka_dataset/parsed/sparse_balances.mtx")
-sparse_balances = sparse_balances.todense()
-scaler = MinMaxScaler(feature_range=(0, 1))
-sparse_balances = scaler.fit_transform(sparse_balances)
+    sequence_autoencoder = LSTM_AutoEncoder(timesteps, lstm_size, latent_dim).get_model(lr)
 
-N = sparse_balances.shape[0]
-D = sparse_balances.shape[1]
+    folder_name = create_folders()
 
-batch_num = 32
-timesteps = D
-latent_dim = 256
-datapoints = N
-lr = 0.001
-reverse = True
+    config = {'batch_num': batch_num,
+              'timesteps': timesteps,
+              'lstm_size': lstm_size,
+              'latent_dim': latent_dim,
+              'lr': lr,
+              'epochs': epochs,
+              'epoch': epoch}
 
-sequence_autoencoder = SequenceAutoencoder(timesteps, latent_dim, reverse).get_model(lr)
+    config_filepath = 'logs/' + folder_name + '/config.json'
+    json.dump(config, open(config_filepath, 'w'))
 
-# earlyStopping = keras.callbacks.EarlyStopping(monitor='loss', patience=10, verbose=0, mode='auto')
-tensorboard = keras.callbacks.TensorBoard(log_dir='./logs/' + folder_name, histogram_freq=0, batch_size=32, write_graph=True)
-# reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.8, patience=10, min_lr=0.005, verbose=1)
-result_plotter = ResultPlotter()
+balances = get_balances(rescale=True, timesteps=timesteps, balances_filepath=balances_filepath)
+N = balances.shape[0]
+D = balances.shape[1]
+print(N, 'datapoints with', D, 'timesteps')
 
-inputs = [sparse_balances[:datapoints, -timesteps:], np.zeros((datapoints))]
-outputs = sparse_balances[:datapoints, -timesteps:]
+tensorboard = TensorBoard(log_dir='./logs/' + folder_name, histogram_freq=0, batch_size=32, write_graph=True)
+reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.9, patience=10, min_lr=0.001, verbose=0, cooldown=2)
 
-sequence_autoencoder.fit(inputs, outputs,
-                         batch_size=batch_num, epochs=1000, callbacks=[result_plotter, tensorboard])
+plots_folder = 'logs/' + folder_name + '/img/'
+result_plotter = ResultPlotter(dataset=balances, plots_folder=plots_folder, model=sequence_autoencoder)
+
+model_filepath = 'logs/' + folder_name + '/model.h5'
+config_filepath = 'logs/' + folder_name + '/config.json'
+model_saver = ModelSaver(model=sequence_autoencoder, model_filepath=model_filepath, config_filepath=config_filepath)
+
+sequence_autoencoder.fit(balances, balances, batch_size=batch_num,
+                         epochs=epochs, initial_epoch=epoch,
+                         callbacks=[result_plotter, tensorboard, reduce_lr, model_saver])
