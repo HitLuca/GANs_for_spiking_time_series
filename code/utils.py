@@ -5,11 +5,12 @@ from datetime import datetime
 import keras
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy import io
 from sklearn.preprocessing import MinMaxScaler
+import tensorflow as tf
+from tensorflow.contrib.tensorboard.plugins import projector
 
 
-def get_balances(rescale, timesteps, balances_filepath):
+def get_balances(balances_filepath, timesteps=100, rescale=True):
     def split_balances(balances, timesteps):
         if balances.shape[1] < timesteps:
             return None
@@ -18,21 +19,19 @@ def get_balances(rescale, timesteps, balances_filepath):
         else:
             splitted_balances, remaining_balances = np.hsplit(balances, [timesteps])
             remaining_balances = split_balances(remaining_balances, timesteps)
-            return np.vstack([splitted_balances, remaining_balances])
+            if remaining_balances is not None:
+                return np.vstack([splitted_balances, remaining_balances])
+            return splitted_balances
 
-    sparse_balances = io.mmread(balances_filepath)
-    balances = sparse_balances.todense()
+    balances = np.load(balances_filepath)
     if rescale:
         balances = MinMaxScaler(feature_range=(-1, 1)).fit_transform(balances)
-
     balances = split_balances(balances, timesteps)
     return balances
 
 
-def create_folders():
-    folder_name = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    os.makedirs('logs/' + folder_name + '/img/')
-    return folder_name
+def get_date_time():
+    return datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
 
 class AEResultPlotter(keras.callbacks.Callback):
@@ -56,7 +55,8 @@ class AEResultPlotter(keras.callbacks.Callback):
             plt.ylim(-1, 1)
             plt.yticks([])
         plt.tight_layout()
-        plt.savefig(self._plots_folder + str(epoch) + '.png')
+        fig_filepath = os.path.join(self._plots_folder, str(epoch) + '.png')
+        plt.savefig(fig_filepath)
         plt.close()
 
 
@@ -86,15 +86,50 @@ class AAEResultPlotter:
 
 
 class ModelSaver(keras.callbacks.Callback):
-    def __init__(self, model, model_filepath, config_filepath):
+    def __init__(self, model, run_folder):
         super().__init__()
         self._model = model
-        self._model_filepath = model_filepath
-        self._config_filepath = config_filepath
+        self._run_folder = run_folder
 
     def on_epoch_end(self, epoch, logs={}):
-        self._model.save(self._model_filepath)
+        self._model.save(os.path.join(self._run_folder, 'model.h5'))
 
-        config = json.load(open(self._config_filepath, 'r+'))
+        config_filepath = os.path.join(self._run_folder, 'config.json')
+        config = json.load(open(config_filepath, 'r+'))
         config['epoch'] = epoch
-        json.dump(config, open(self._config_filepath, 'w'))
+        json.dump(config, open(config_filepath, 'w'))
+
+
+def create_dataset_sprite(dataset, filepath):
+    N, D = dataset.shape
+
+    size = int(np.sqrt(N))
+    dim = int(np.sqrt(D))
+    sprite_image = np.zeros((size * dim, size * dim))
+
+    k = 0
+    for i in range(0, size * dim, dim):
+        for j in range(0, size * dim, dim):
+            sprite_image[i:i + dim, j:j + dim] = np.reshape(dataset[k], newshape=(dim, dim))
+            k += 1
+
+    plt.imsave(filepath, sprite_image, cmap='plasma')
+
+
+def visualize_embeddings(embedded_dataset, run_folder, dim):
+    summary_writer = tf.summary.FileWriter(run_folder)
+    embedding_var = tf.Variable(embedded_dataset, name='embedding')
+
+    config = projector.ProjectorConfig()
+    embedding = config.embeddings.add()
+    embedding.tensor_name = embedding_var.name
+
+    embedding.sprite.image_path = os.path.join(run_folder, 'sprite.png')
+    embedding.sprite.single_image_dim.extend([dim, dim])
+
+    projector.visualize_embeddings(summary_writer, config)
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+        saver.save(sess, os.path.join(run_folder, 'model.ckpt'))
