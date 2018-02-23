@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
+from math import ceil, sqrt
 
 
 def get_balances(balances_filepath, timesteps=100, rescale=True):
@@ -100,36 +101,68 @@ class ModelSaver(keras.callbacks.Callback):
         json.dump(config, open(config_filepath, 'w'))
 
 
-def create_dataset_sprite(dataset, filepath):
+def create_dataset_sprite(dataset, run_folder):
     N, D = dataset.shape
 
-    size = int(np.sqrt(N))
-    dim = int(np.sqrt(D))
+    size = int(ceil(sqrt(N)))
+    dim = int(ceil(sqrt(D)))
+    padded = np.zeros((N, dim*dim))
+    padded[:, :D] = dataset
+
     sprite_image = np.zeros((size * dim, size * dim))
 
     k = 0
     for i in range(0, size * dim, dim):
         for j in range(0, size * dim, dim):
-            sprite_image[i:i + dim, j:j + dim] = np.reshape(dataset[k], newshape=(dim, dim))
-            k += 1
+            if k < N:
+                sprite_image[i:i + dim, j:j + dim] = np.reshape(padded[k], newshape=(dim, dim))
+                k += 1
 
-    plt.imsave(filepath, sprite_image, cmap='plasma')
+    plt.imsave(os.path.join(run_folder, 'sprite.png'), sprite_image, cmap='plasma')
 
 
-def visualize_embeddings(embedded_dataset, run_folder, dim):
-    summary_writer = tf.summary.FileWriter(run_folder)
-    embedding_var = tf.Variable(embedded_dataset, name='embedding')
+class EmbeddingsVisualizer(keras.callbacks.Callback):
+    def __init__(self, encoder, dataset, run_folder):
+        super().__init__()
+        self._encoder = encoder
+        self._run_folder = run_folder
+        self._dataset = dataset
+        self._dim = int(ceil(sqrt(dataset.shape[1])))
+        self._embedded_data = None
 
-    config = projector.ProjectorConfig()
-    embedding = config.embeddings.add()
-    embedding.tensor_name = embedding_var.name
+    def on_epoch_end(self, epoch, logs={}):
+        self._embedded_data = self._encoder.predict(self._dataset)
+        self._visualize_embeddings(epoch)
 
-    embedding.sprite.image_path = 'sprite.png'
-    embedding.sprite.single_image_dim.extend([dim, dim])
+    def _visualize_embeddings(self, epoch):
+        summary_writer = tf.summary.FileWriter(self._run_folder)
+        embedding_var = tf.Variable(self._embedded_data, name='embedding')
 
-    projector.visualize_embeddings(summary_writer, config)
+        embedding_filepath = os.path.join(self._run_folder, 'projector_config.pbtxt')
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        saver = tf.train.Saver()
-        saver.save(sess, os.path.join(run_folder, 'model.ckpt'))
+        # config = projector.ProjectorConfig()
+        # embedding = config.embeddings.add()
+        # embedding.tensor_name = embedding_var.name
+        #
+        # embedding.sprite.image_path = 'sprite.png'
+        # embedding.sprite.single_image_dim.extend([self._dim, self._dim])
+        #
+        # projector.visualize_embeddings(summary_writer, config)
+
+        with open(embedding_filepath, 'w') as f:
+            for i in range(epoch+1):
+                print('embeddings {', file=f)
+                print('\ttensor_name: "embedding_' + str(i+1) + ':0"', file=f)
+                print('\tsprite {', file=f)
+                print('\t\timage_path: "sprite.png"', file=f)
+                print('\t\tsingle_image_dim: 10', file=f)
+                print('\t\tsingle_image_dim: 10', file=f)
+                print('\t}', file=f)
+                print('}', file=f)
+
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            saver = tf.train.Saver()
+            saver.save(sess, os.path.join(self._run_folder, 'model.ckpt'))
+
+
