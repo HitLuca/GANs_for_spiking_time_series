@@ -124,7 +124,7 @@ def visualize_embeddings(embedded_dataset, run_folder, dim):
     embedding = config.embeddings.add()
     embedding.tensor_name = embedding_var.name
 
-    embedding.sprite.image_path = os.path.join(run_folder, 'sprite.png')
+    embedding.sprite.image_path = 'sprite.png'
     embedding.sprite.single_image_dim.extend([dim, dim])
 
     projector.visualize_embeddings(summary_writer, config)

@@ -62,11 +62,13 @@ config_filepath = os.path.join(run_folder, 'config.json')
 checkpoint_filepath = os.path.join(run_folder, 'model.ckpt')
 model_saver = ModelSaver(model=autoencoder, run_folder=run_folder)
 
-autoencoder.fit(balances, balances, batch_size=batch_num, validation_split=0.3,
+autoencoder.fit(balances, balances, batch_size=batch_num, validation_split=0.2,
                      epochs=1, initial_epoch=epoch,
                      callbacks=[result_plotter, tensorboard, reduce_lr, model_saver])
 
 sprite_filepath = os.path.join(run_folder, 'sprite.png')
+print(sprite_filepath)
 embedded_data = encoder.predict(balances)
+print(embedded_data.shape)
 create_dataset_sprite(balances, sprite_filepath)
 visualize_embeddings(embedded_data, run_folder, int(np.sqrt(D)))
