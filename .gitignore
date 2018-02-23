@@ -174,3 +174,7 @@ venv.bak/
 
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebook
+
+.idea/inspectionProfiles/
+.idea/markdown-navigator/
+.idea/other.xml
