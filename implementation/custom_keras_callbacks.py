@@ -53,35 +53,36 @@ class AEModelSaver(keras.callbacks.Callback):
 
 
 class AEEmbeddingsVisualizer(keras.callbacks.Callback):
-    def __init__(self, encoder, dataset, run_folder):
+    def __init__(self, encoder, dataset, run_folder, embeddings_frequency = 1):
         super().__init__()
         self._encoder = encoder
         self._run_folder = run_folder
         self._dataset = dataset
         self._dim = int(ceil(sqrt(dataset.shape[1])))
         self._embedded_data = None
+        self._embeddings_frequency = embeddings_frequency
 
     def on_epoch_end(self, epoch, logs={}):
-        self._embedded_data = self._encoder.predict(self._dataset, batch_size=32)
-        self._visualize_embeddings(epoch)
+        if (epoch+1) % self._embeddings_frequency == 0:
+            self._embedded_data = self._encoder.predict(self._dataset, batch_size=32)
+            self._visualize_embeddings(epoch+1)
 
     def _visualize_embeddings(self, epoch):
-        embedding_var = tf.Variable(self._embedded_data, name='embedding')
+        embedding_var = tf.Variable(self._embedded_data)
 
         embedding_filepath = os.path.join(self._run_folder, 'projector_config.pbtxt')
 
         with open(embedding_filepath, 'w') as f:
-            for i in range(epoch + 1):
-                print('embeddings {', file=f)
-                print('\ttensor_name: "embedding_' + str(i + 1) + ':0"', file=f)
-                print('\tsprite {', file=f)
-                print('\t\timage_path: "sprite.png"', file=f)
-                print('\t\tsingle_image_dim: 10', file=f)
-                print('\t\tsingle_image_dim: 10', file=f)
-                print('\t}', file=f)
-                print('}', file=f)
+            print('embeddings {', file=f)
+            print('\ttensor_name: "embedding_' + str(epoch) + ':0"', file=f)
+            print('\tsprite {', file=f)
+            print('\t\timage_path: "sprite.png"', file=f)
+            print('\t\tsingle_image_dim: 10', file=f)
+            print('\t\tsingle_image_dim: 10', file=f)
+            print('\t}', file=f)
+            print('}', file=f)
 
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            saver = tf.train.Saver()
-            saver.save(sess, os.path.join(self._run_folder, 'model.ckpt'))
+            saver = tf.train.Saver({'embedding_' + str(epoch): embedding_var})
+            saver.save(sess, os.path.join(self._run_folder, 'embeddings.ckpt'))

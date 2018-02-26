@@ -1,5 +1,5 @@
-from code.LSTM_AAE.LSTM_AAE import LSTM_AAE
-from code.utils import *
+from implementation.LSTM_AAE.LSTM_AAE import LSTM_AAE
+from implementation.utils import *
 
 balances_filepath = "/home/luca/PycharmProjects/Master-thesis/berka_dataset/parsed/sparse_balances.mtx"
 

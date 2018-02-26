@@ -77,14 +77,15 @@ def create_dataset_sprite(dataset, run_folder):
     plt.imsave(os.path.join(run_folder, 'sprite.png'), sprite_image, cmap='plasma')
 
 
-def save_config(timesteps, batch_num, lstm_size, latent_dim, lr, epoch, epochs, config_filepath):
+def save_config(timesteps, batch_num, lstm_size, latent_dim, lr, epoch, epochs, print_freq, config_filepath):
     config = {'batch_num': batch_num,
               'timesteps': timesteps,
               'lstm_size': lstm_size,
               'latent_dim': latent_dim,
               'lr': lr,
               'epochs': epochs,
-              'epoch': epoch}
+              'epoch': epoch,
+              'print_freq': print_freq}
 
     json.dump(config, open(config_filepath, 'w'))
 
@@ -99,5 +100,6 @@ def load_config(config_filepath):
     lstm_size = config['lstm_size']
     latent_dim = config['latent_dim']
     lr = config['lr']
+    print_freq = config['print_freq']
 
-    return timesteps, batch_num, lstm_size, latent_dim, lr, epoch, epochs
+    return timesteps, batch_num, lstm_size, latent_dim, lr, epoch, epochs, print_freq
