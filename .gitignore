@@ -178,3 +178,10 @@ venv.bak/
 .idea/inspectionProfiles/
 .idea/markdown-navigator/
 .idea/other.xml
+
+implementation/initial_experiments/gan/
+implementation/initial_experiments/wgan/
+
+datasets/berka_dataset/original/
+datasets/berka_dataset/parsed/
+datasets/berka_dataset/usable/
