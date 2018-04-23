@@ -10,7 +10,7 @@ class GAN:
         self._latent_dim = latent_dim
 
     def build_model(self, lr):
-        self._generator = self._build_generator(x)
+        self._generator = self._build_generator()
 
         self._discriminator = self._build_discriminator()
         self._discriminator.compile(loss='binary_crossentropy', optimizer=RMSprop(lr))

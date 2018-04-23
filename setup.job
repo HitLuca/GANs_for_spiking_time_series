@@ -1,0 +1,7 @@
+#!bin/bash
+#SBATCH --time=00:05:00
+#SBATCH -o setup.log
+
+module load python/3.5.2
+
+python3 setup.py

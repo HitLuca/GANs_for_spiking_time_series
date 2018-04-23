@@ -3,7 +3,7 @@ from keras import Model
 from keras.layers import *
 from keras.models import load_model
 from keras.optimizers import RMSprop
-
+import json
 
 class WGAN:
     def __init__(self, timesteps, latent_dim, run_dir, img_dir, model_dir, generated_datesets_dir):
@@ -16,6 +16,8 @@ class WGAN:
 
         self._epoch = 0
         self._losses = [[], []]
+
+        self._save_configuration()
 
     def build_models(self, generator_lr, critic_lr):
         self._generator = self._build_generator()
@@ -147,7 +149,7 @@ class WGAN:
         save_latent_space(self._latent_dim, self._generator, filename)
 
     def _save_losses(self):
-        save_losses(str(self._img_dir / 'losses.png'))
+        save_losses(self._losses, str(self._img_dir / 'losses.png'))
 
     def _clip_weights(self, clip_value):
         for l in self._critic.layers:
@@ -168,6 +170,15 @@ class WGAN:
 
     def get_models(self):
         return self._gan, self._generator, self._critic
+
+    def _save_configuration(self):
+        config = {
+            'timesteps': self._timesteps,
+            'latent_dim': self._latent_dim
+        }
+
+        with open(self._run_dir / 'config.json', 'w') as f:
+            json.dump(config, f)
 
     @staticmethod
     def _wasserstein_loss(y_true, y_pred):
