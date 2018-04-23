@@ -1,4 +1,4 @@
-from GAN_utils import *
+from gan_utils import *
 from keras import Model
 from keras.layers import *
 from keras.optimizers import *

@@ -1,9 +1,0 @@
-#!bin/bash
-#SBATCH --time=00:05:00
-#SBATCH -o train_WGAN.log
-
-module load python/3.5.2
-module load cuda80
-module load cuDNN
-
-python3 train_WGAN.py

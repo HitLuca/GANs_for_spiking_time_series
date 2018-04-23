@@ -1,5 +1,6 @@
 import keras.backend as K
 from keras import initializers, regularizers, constraints
+from keras.constraints import Constraint
 from keras.engine import Layer, InputSpec
 import numpy as np
 from matplotlib import pyplot as plt

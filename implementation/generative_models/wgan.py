@@ -1,9 +1,11 @@
-from GAN_utils import *
+import time
+from gan_utils import *
 from keras import Model
 from keras.layers import *
 from keras.models import load_model
 from keras.optimizers import RMSprop
 import json
+import tensorflow as tf
 
 class WGAN:
     def __init__(self, timesteps, latent_dim, run_dir, img_dir, model_dir, generated_datesets_dir):
@@ -62,8 +64,8 @@ class WGAN:
         critic_inputs = Input((self._timesteps,))
         criticized = critic_inputs
 
-        #         mbd = MinibatchDiscrimination(5, 3)(criticized)
-        #         mbd = Dense(1, activation='tanh')(mbd)
+        mbd = MinibatchDiscrimination(5, 3)(criticized)
+        mbd = Dense(5, activation='relu')(mbd)
 
         criticized = Lambda(lambda x: K.expand_dims(x))(
             criticized)
@@ -73,11 +75,9 @@ class WGAN:
             criticized = MaxPooling1D(2, padding='same')(criticized)
         criticized = Flatten()(criticized)
         criticized = Dense(32, activation='relu')(criticized)
+        criticized = Concatenate()([criticized, mbd])
         criticized = Dense(15, activation='relu')(criticized)
-        #         criticized = Dense(1, activation='tanh')(criticized)
-        #         criticized = Concatenate()([criticized, mbd])
         criticized = Dense(1)(criticized)
-
         critic = Model(critic_inputs, criticized, 'critic')
         return critic
 
@@ -101,8 +101,7 @@ class WGAN:
                     generated_transactions, np.ones((half_batch, 1)))
                 critic_loss = 0.5 * np.add(critic_loss_real,
                                            critic_loss_fake)
-
-                self._clip_weights(clip_value)
+            self._clip_weights(clip_value)
 
             for _ in range(n_generator):
                 noise = np.random.normal(0, 1, (batch_size, self._latent_dim))
@@ -152,10 +151,7 @@ class WGAN:
         save_losses(self._losses, str(self._img_dir / 'losses.png'))
 
     def _clip_weights(self, clip_value):
-        for l in self._critic.layers:
-            #             if 'minibatch_discrimination' not in l.name:
-            weights = [np.clip(w, -clip_value, clip_value) for w in l.get_weights()]
-            l.set_weights(weights)
+        [l.set_weights([np.clip(w, -clip_value, clip_value) for w in l.get_weights()]) for l in self._critic.layers]
 
     def _save_models(self):
         self._gan.save(self._model_dir / 'wgan.h5')
@@ -177,7 +173,7 @@ class WGAN:
             'latent_dim': self._latent_dim
         }
 
-        with open(self._run_dir / 'config.json', 'w') as f:
+        with open(str(self._run_dir / 'config.json'), 'w') as f:
             json.dump(config, f)
 
     @staticmethod
