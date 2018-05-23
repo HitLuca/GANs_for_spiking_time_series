@@ -180,12 +180,11 @@ venv.bak/
 .idea/markdown-navigator/
 .idea/other.xml
 
-implementation/initial_experiments/gan/
-implementation/initial_experiments/wgan/
-
 datasets/berka_dataset/original/
 datasets/berka_dataset/parsed/
 datasets/berka_dataset/usable/
 datasets/berka_dataset/data_berka.zip
-implementation/generative_models/gan/
-implementation/generative_models/wgan/
+
+implementation/generative_models/wgan/outputs/
+implementation/generative_models/gan/outputs/
+implementation/generative_models/wgan_gp/outputs/

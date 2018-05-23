@@ -1,7 +1,10 @@
 import keras.backend as K
+from datetime import datetime
 from keras import initializers, regularizers, constraints
 from keras.engine import Layer, InputSpec
 import numpy as np
+from keras.layers.merge import _Merge
+from pathlib import Path
 from scipy.misc import imresize
 
 import matplotlib
@@ -19,7 +22,7 @@ def save_samples(generated_data, rows, columns, filenames, is_image):
     if is_image:
         plt.subplots(rows, columns, figsize=(7, 7))
     else:
-        plt.subplots(rows, columns, figsize=(columns*3, rows))
+        plt.subplots(rows, columns, figsize=(columns * 3, rows))
 
     k = 1
     for i in range(rows):
@@ -66,7 +69,7 @@ def save_latent_space(generated_data, grid_size, filenames, is_image):
         for j in range(grid_size):
             plt.subplot(grid_size, grid_size, i * grid_size + j + 1)
             if is_image:
-                plt.imshow((generated_data[i*grid_size + j].reshape(10, 10) + 1.0) / 2.0)
+                plt.imshow((generated_data[i * grid_size + j].reshape(10, 10) + 1.0) / 2.0)
             else:
                 plt.plot((generated_data[i * grid_size + j]).T)
                 plt.ylim(-1, 1)
@@ -79,7 +82,7 @@ def save_latent_space(generated_data, grid_size, filenames, is_image):
     plt.clf()
     plt.close()
 
-    
+
 def split_data(dataset, timesteps):
     D = dataset.shape[1]
     if D < timesteps:
@@ -121,6 +124,25 @@ def wasserstein_loss(y_true, y_pred):
     return K.mean(y_true * y_pred)
 
 
+def gradient_penalty_loss(y_true, y_pred, averaged_samples, gradient_penalty_weight):
+    gradients = K.gradients(y_pred, averaged_samples)[0]
+    gradients_sqr = K.square(gradients)
+    gradients_sqr_sum = K.sum(gradients_sqr, axis=np.arange(1, len(gradients_sqr.shape)))
+    gradient_l2_norm = K.sqrt(gradients_sqr_sum)
+    gradient_penalty = gradient_penalty_weight * K.square(1 - gradient_l2_norm)
+    return K.mean(gradient_penalty)
+
+
+class RandomWeightedAverage(_Merge):
+    def __init__(self, batch_size, **kwargs):
+        super().__init__(**kwargs)
+        self._batch_size = batch_size
+
+    def _merge_function(self, inputs):
+        weights = K.random_uniform((self._batch_size, 1))
+        return (weights * inputs[0]) + ((1 - weights) * inputs[1])
+
+
 class MinibatchDiscrimination(Layer):
     """Concatenates to each sample information about how different the input
     features for that sample are from features of other samples in the same
@@ -156,11 +178,11 @@ class MinibatchDiscrimination(Layer):
                                      shape=(None, input_dim))]
 
         self.W = self.add_weight(shape=(self.nb_kernels, input_dim, self.kernel_dim),
-            initializer=self.init,
-            name='kernel',
-            regularizer=self.W_regularizer,
-            trainable=True,
-            constraint=self.W_constraint)
+                                 initializer=self.init,
+                                 name='kernel',
+                                 regularizer=self.W_regularizer,
+                                 trainable=True,
+                                 constraint=self.W_constraint)
 
         # Set built to true.
         super(MinibatchDiscrimination, self).build(input_shape)
@@ -188,3 +210,22 @@ class MinibatchDiscrimination(Layer):
                   'input_dim': self.input_dim}
         base_config = super(MinibatchDiscrimination, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+def generate_run_dir():
+    root_path = Path('outputs')
+    if not root_path.exists():
+        root_path.mkdir()
+
+    current_datetime = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    run_dir = root_path / current_datetime
+    img_dir = run_dir / 'img'
+    model_dir = run_dir / 'models'
+    generated_datesets_dir = run_dir / 'generated_datasets'
+
+    img_dir.mkdir(parents=True)
+    model_dir.mkdir(parents=True)
+    generated_datesets_dir.mkdir(parents=True)
+
+    return run_dir, img_dir, model_dir, generated_datesets_dir
