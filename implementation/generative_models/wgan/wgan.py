@@ -122,7 +122,9 @@ class WGAN:
 
         generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
 
-        generated = Dense(self._timesteps, activation='tanh', kernel_initializer=self._weights_initializer)(generated)
+        generated = Dense(self._timesteps, kernel_initializer=self._weights_initializer)(generated)
+        generated = BatchNormalization()(generated)
+        generated = Activation('tanh')(generated)
 
         generator = Model(generator_inputs, generated, 'generator')
         return generator

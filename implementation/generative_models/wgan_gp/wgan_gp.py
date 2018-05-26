@@ -24,6 +24,7 @@ class WGAN_GP:
 
         self._batch_size = batch_size
         self._packing_degree = packing_degree
+
         self._gradient_penality_weight = gradient_penality_weight
 
     def build_models(self, generator_lr, critic_lr):
@@ -58,8 +59,8 @@ class WGAN_GP:
         return generator_model
 
     def _build_critic_model(self, critic_lr):
-        utils.set_model_trainable(self._critic, True)
         utils.set_model_trainable(self._generator, False)
+        utils.set_model_trainable(self._critic, True)
 
         noise_samples = Input((self._latent_dim,))
         real_samples = Input((self._timesteps,))
@@ -75,6 +76,7 @@ class WGAN_GP:
         expanded_generated_supporting_samples = Lambda(
             lambda x: K.reshape(x, (self._batch_size, self._timesteps, self._packing_degree)))(
             supporting_generated_samples)
+
         merged_generated_samples = Concatenate(-1)([expanded_generated_samples, expanded_generated_supporting_samples])
 
         generated_criticized = self._critic(merged_generated_samples)
@@ -85,6 +87,7 @@ class WGAN_GP:
         real_criticized = self._critic(merged_real_samples)
 
         averaged_samples = utils.RandomWeightedAverage(self._batch_size)([real_samples, generated_samples])
+
         expanded_averaged_samples = Lambda(lambda x: K.reshape(x, (self._batch_size, self._timesteps, 1)))(
             averaged_samples)
 
@@ -93,6 +96,7 @@ class WGAN_GP:
             supporting_real_samples)
         averaged_support_samples = utils.RandomWeightedAverage((self._batch_size * self._packing_degree))(
             [expanded_supporting_real_samples, supporting_generated_samples])
+
         averaged_support_samples = Lambda(
             lambda x: K.reshape(x, (self._batch_size, self._timesteps, self._packing_degree)))(
             averaged_support_samples)
@@ -108,6 +112,7 @@ class WGAN_GP:
 
         critic_model = Model([real_samples, supporting_real_samples, noise_samples, supporting_noise_samples],
                              [real_criticized, generated_criticized, averaged_criticized], 'critic_model')
+
         critic_model.compile(optimizer=Adam(critic_lr, beta_1=0.5, beta_2=0.9),
                              loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss])
         return critic_model
@@ -123,28 +128,39 @@ class WGAN_GP:
 
         generated = Lambda(lambda x: K.expand_dims(x))(generated)
 
-        generated = Conv1D(64, 3, padding='same')(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
+        generated = BatchNormalization()(generated)
+        generated = LeakyReLU(0.2)(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
         generated = BatchNormalization()(generated)
         generated = LeakyReLU(0.2)(generated)
         generated = UpSampling1D(2)(generated)
 
-        generated = Conv1D(32, 3, padding='same')(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
+        generated = BatchNormalization()(generated)
+        generated = LeakyReLU(0.2)(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
         generated = BatchNormalization()(generated)
         generated = LeakyReLU(0.2)(generated)
         generated = UpSampling1D(2)(generated)
 
-        generated = Conv1D(16, 3, padding='same')(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
+        generated = BatchNormalization()(generated)
+        generated = LeakyReLU(0.2)(generated)
+        generated = Conv1D(32, 2, padding='same')(generated)
         generated = BatchNormalization()(generated)
         generated = LeakyReLU(0.2)(generated)
         generated = UpSampling1D(2)(generated)
 
-        generated = Conv1D(1, 3, padding='same')(generated)
+        generated = Conv1D(1, 1, padding='same')(generated)
         generated = BatchNormalization()(generated)
         generated = LeakyReLU(0.2)(generated)
 
         generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
 
-        generated = Dense(self._timesteps, activation='tanh')(generated)
+        generated = Dense(self._timesteps)(generated)
+        generated = BatchNormalization()(generated)
+        generated = Activation('tanh')(generated)
 
         generator = Model(generator_inputs, generated, 'generator')
         return generator
@@ -153,16 +169,22 @@ class WGAN_GP:
         critic_inputs = Input((self._timesteps, self._packing_degree + 1))
         criticized = critic_inputs
 
-        criticized = Conv1D(16, 3, padding='same')(criticized)
+        criticized = Conv1D(32, 2)(criticized)
         criticized = LeakyReLU(0.2)(criticized)
+        # criticized = Conv1D(32, 2)(criticized)
+        # criticized = LeakyReLU(0.2)(criticized)
         criticized = MaxPooling1D(2, padding='same')(criticized)
 
-        criticized = Conv1D(32, 3, padding='same')(criticized)
+        criticized = Conv1D(32, 2)(criticized)
         criticized = LeakyReLU(0.2)(criticized)
+        # criticized = Conv1D(32, 2)(criticized)
+        # criticized = LeakyReLU(0.2)(criticized)
         criticized = MaxPooling1D(2, padding='same')(criticized)
 
-        criticized = Conv1D(64, 3, padding='same')(criticized)
+        criticized = Conv1D(32, 2)(criticized)
         criticized = LeakyReLU(0.2)(criticized)
+        # criticized = Conv1D(32, 2)(criticized)
+        # criticized = LeakyReLU(0.2)(criticized)
         criticized = MaxPooling1D(2, padding='same')(criticized)
 
         criticized = Flatten()(criticized)
