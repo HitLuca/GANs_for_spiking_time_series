@@ -153,7 +153,6 @@ class WGAN_GP:
         generated = UpSampling1D(2)(generated)
 
         generated = Conv1D(1, 1, padding='same')(generated)
-        generated = BatchNormalization()(generated)
         generated = LeakyReLU(0.2)(generated)
 
         generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
