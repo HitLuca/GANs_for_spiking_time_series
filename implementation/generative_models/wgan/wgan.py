@@ -1,196 +1,90 @@
 import pickle
 
-from implementation.generative_models import utils
-from keras import Model
+import sys
+import wgan_utils
 from keras.layers import *
-from keras.optimizers import RMSprop
 from keras.initializers import RandomNormal
+
+sys.path.append("..")
+import utils
 
 
 class WGAN:
-    def __init__(self, timesteps, latent_dim, packing_degree, batch_size, run_dir, img_dir, model_dir, generated_datesets_dir):
-        self._timesteps = timesteps
-        self._latent_dim = latent_dim
-        self._batch_size = batch_size
-        self._run_dir = run_dir
-        self._img_dir = img_dir
-        self._model_dir = model_dir
-        self._generated_datesets_dir = generated_datesets_dir
+    def __init__(self, config):
+        self._batch_size = config['batch_size']
+        self._epochs = config['epochs']
+        self._timesteps = config['timesteps']
+        self._n_critic = config['n_critic']
+        self._n_generator = config['n_generator']
+        self._latent_dim = config['latent_dim']
 
-        self._save_config()
+        self._generator_lr = config['generator_lr']
+        self._critic_lr = config['critic_lr']
+        self._clip_value = config['clip_value']
+        self._img_frequency = config['img_frequency']
+        self._loss_frequency = config['loss_frequency']
+        self._latent_space_frequency = config['latent_space_frequency']
+        self._model_save_frequency = config['model_save_frequency']
+        self._dataset_generation_frequency = config['dataset_generation_frequency']
+        self._dataset_generation_size = config['dataset_generation_size']
+        self._packing_degree = config['packing_degree']
+        self._run_dir = config['run_dir']
+        self._img_dir = config['img_dir']
+        self._model_dir = config['model_dir']
+        self._generated_datesets_dir = config['generated_datesets_dir']
+        self._use_mbd = config['use_mbd']
+        self._use_packing = config['use_packing']
 
         self._epoch = 0
         self._losses = [[], []]
-
-        self._packing_degree = packing_degree
         self._weights_initializer = RandomNormal(stddev=0.02)
+        self._build_models()
 
-    def build_models(self, generator_lr, critic_lr):
-        self._generator = self._build_generator()
-        self._critic = self._build_critic()
+    def _build_models(self):
+        self._generator = wgan_utils.build_generator(self._latent_dim, self._timesteps, self._weights_initializer)
+        self._critic = wgan_utils.build_critic(self._timesteps, self._weights_initializer, self._use_mbd, self._use_packing, self._packing_degree)
 
-        self._generator_model = self._build_generator_model(generator_lr)
-        self._critic_model = self._build_critic_model(critic_lr)
+        self._generator_model = wgan_utils.build_generator_model(self._generator, self._critic, self._generator_lr, self._latent_dim, self._batch_size, self._timesteps, self._use_packing, self._packing_degree)
+        self._critic_model = wgan_utils.build_critic_model(self._generator, self._critic, self._critic_lr, self._latent_dim, self._batch_size, self._timesteps, self._use_packing, self._packing_degree)
 
         return self._generator, self._critic
 
-    def _build_generator_model(self, generator_lr):
-        utils.set_model_trainable(self._generator, True)
-        utils.set_model_trainable(self._critic, False)
-
-        noise_samples = Input((self._latent_dim,))
-        supporting_noise_samples = Input((self._latent_dim, self._packing_degree))
-
-        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (self._batch_size * self._packing_degree, self._latent_dim)))(supporting_noise_samples)
-        generated_samples = self._generator(noise_samples)
-        generated_samples = Lambda(lambda x: K.reshape(x, (self._batch_size, self._timesteps, 1)))(
-            generated_samples)
-        supporting_generated_samples = self._generator(reshaped_supporting_noise_samples)
-        supporting_generated_samples = Lambda(lambda x: K.reshape(x, (self._batch_size, self._timesteps, self._packing_degree)))(
-            supporting_generated_samples)
-
-        merged_generated_samples = Lambda(lambda x: K.concatenate(x, -1))([generated_samples, supporting_generated_samples])
-
-        generated_criticized = self._critic(merged_generated_samples)
-
-        generator_model = Model([noise_samples, supporting_noise_samples], generated_criticized, 'generator_model')
-        generator_model.compile(loss=utils.wasserstein_loss, optimizer=RMSprop(generator_lr))
-
-        return generator_model
-
-    def _build_critic_model(self, critic_lr):
-        utils.set_model_trainable(self._generator, True)
-        utils.set_model_trainable(self._critic, False)
-
-        noise_samples = Input((self._latent_dim,))
-        real_samples = Input((self._timesteps,))
-        supporting_noise_samples = Input((self._latent_dim, self._packing_degree))
-        supporting_real_samples = Input((self._timesteps, self._packing_degree))
-
-        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (self._batch_size * self._packing_degree, self._latent_dim)))(supporting_noise_samples)
-        generated_samples = self._generator(noise_samples)
-        generated_supporting_samples = self._generator(reshaped_supporting_noise_samples)
-
-        expanded_generated_samples = Lambda(lambda x: K.reshape(x, (self._batch_size, self._timesteps, 1)))(generated_samples)
-        expanded_generated_supporting_samples = Lambda(
-            lambda x: K.reshape(x, (self._batch_size, self._timesteps, self._packing_degree)))(generated_supporting_samples)
-        merged_generated_samples = Lambda(lambda x: K.concatenate(x, -1))(
-            [expanded_generated_samples, expanded_generated_supporting_samples])
-
-        generated_criticized = self._critic(merged_generated_samples)
-
-        expanded_real_samples = Lambda(lambda x: K.reshape(x, (self._batch_size, self._timesteps, 1)))(real_samples)
-        merged_real_samples = Lambda(lambda x: K.concatenate(x, -1))([expanded_real_samples, supporting_real_samples])
-
-        real_criticized = self._critic(merged_real_samples)
-
-        critic_model = Model([real_samples, supporting_real_samples, noise_samples, supporting_noise_samples],
-                             [real_criticized, generated_criticized], 'critic_model')
-        critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr))
-
-        return critic_model
-
-    def _build_generator(self):
-        generator_inputs = Input((self._latent_dim,))
-        generated = generator_inputs
-
-        if self._latent_dim != 15:
-            generated = Dense(15, kernel_initializer=self._weights_initializer)(generated)
-            generated = BatchNormalization()(generated)
-            generated = LeakyReLU(0.2)(generated)
-
-        generated = Lambda(lambda x: K.expand_dims(x))(generated)
-
-        generated = Conv1D(64, 3, padding='same', kernel_initializer=self._weights_initializer)(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(32, 3, padding='same', kernel_initializer=self._weights_initializer)(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(16, 3, padding='same', kernel_initializer=self._weights_initializer)(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(1, 3, padding='same', kernel_initializer=self._weights_initializer)(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-
-        generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
-
-        generated = Dense(self._timesteps, kernel_initializer=self._weights_initializer)(generated)
-        generated = BatchNormalization()(generated)
-        generated = Activation('tanh')(generated)
-
-        generator = Model(generator_inputs, generated, 'generator')
-        return generator
-
-    def _build_critic(self):
-        critic_inputs = Input((self._timesteps, self._packing_degree + 1))
-        criticized = critic_inputs
-
-        criticized = Conv1D(16, 3, padding='same', kernel_initializer=self._weights_initializer)(criticized)
-        criticized = BatchNormalization()(criticized)
-        criticized = LeakyReLU(0.2)(criticized)
-        criticized = MaxPooling1D(2, padding='same')(criticized)
-
-        criticized = Conv1D(32, 3, padding='same', kernel_initializer=self._weights_initializer)(criticized)
-        criticized = BatchNormalization()(criticized)
-        criticized = LeakyReLU(0.2)(criticized)
-        criticized = MaxPooling1D(2, padding='same')(criticized)
-
-        criticized = Conv1D(64, 3, padding='same', kernel_initializer=self._weights_initializer)(criticized)
-        criticized = BatchNormalization()(criticized)
-        criticized = LeakyReLU(0.2)(criticized)
-        criticized = MaxPooling1D(2, padding='same')(criticized)
-
-        criticized = Flatten()(criticized)
-
-        criticized = Dense(15, kernel_initializer=self._weights_initializer)(criticized)
-        criticized = BatchNormalization()(criticized)
-        criticized = LeakyReLU(0.2)(criticized)
-
-        criticized = Dense(1, kernel_initializer=self._weights_initializer)(criticized)
-
-        critic = Model(critic_inputs, criticized, 'critic')
-
-        return critic
-
-    def train(self, epochs, n_generator, n_critic, dataset, clip_value,
-              img_frequency, loss_frequency, latent_space_frequency, model_save_frequency, dataset_generation_frequency,
-              dataset_generation_size):
-
+    def train(self, dataset):
         ones = np.ones((self._batch_size, 1))
         neg_ones = -ones
 
-        while self._epoch < epochs:
+        while self._epoch < self._epochs:
             self._epoch += 1
             critic_losses = []
-            for _ in range(n_critic):
-                indexes = np.random.randint(0, dataset.shape[0], (self._batch_size, self._packing_degree + 1))
-                batch_transactions = dataset[indexes[:, 0]].reshape(self._batch_size, self._timesteps)
-                supporting_transactions = dataset[indexes[:, 1:]].reshape(self._batch_size, self._timesteps, self._packing_degree)
-
+            for _ in range(self._n_critic):
+                indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
+                batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
-                supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
 
-                critic_loss = self._critic_model.train_on_batch([batch_transactions, supporting_transactions, noise, supporting_noise],
-                                                          [ones, neg_ones])[0]
+                inputs = [batch_transactions, noise]
+
+                if self._use_packing:
+                    supporting_indexes = np.random.randint(0, dataset.shape[0], self._batch_size * self._packing_degree)
+                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps, self._packing_degree)
+                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    inputs.extend([supporting_transactions, supporting_noise])
+
+                critic_loss = self._critic_model.train_on_batch(inputs, [ones, neg_ones])[0]
                 critic_losses.append(critic_loss)
 
-                utils.clip_weights(self._critic, clip_value)
+                utils.clip_weights(self._critic, self._clip_value)
             critic_loss = np.mean(critic_losses)
 
             generator_losses = []
-            for _ in range(n_generator):
+            for _ in range(self._n_generator):
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
-                supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                inputs = [noise]
 
-                generator_losses.append(self._generator_model.train_on_batch([noise, supporting_noise], ones))
+                if self._use_packing:
+                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    inputs.append(supporting_noise)
+
+                generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
 
             generator_loss = np.mean(generator_losses)
 
@@ -202,22 +96,22 @@ class WGAN:
 
             print("%d [C loss: %f] [G loss: %f]" % (self._epoch, critic_loss, generator_loss))
 
-            if self._epoch % loss_frequency == 0:
+            if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
 
-            if self._epoch % img_frequency == 0:
+            if self._epoch % self._img_frequency == 0:
                 self._save_samples()
 
-            if self._epoch % latent_space_frequency == 0:
+            if self._epoch % self._latent_space_frequency == 0:
                 self._save_latent_space()
 
-            if self._epoch % model_save_frequency == 0:
+            if self._epoch % self._model_save_frequency == 0:
                 self._save_models()
 
-            if self._epoch % dataset_generation_frequency == 0:
-                self._generate_dataset(self._epoch, dataset_generation_size)
+            if self._epoch % self._dataset_generation_frequency == 0:
+                self._generate_dataset(self._epoch, self._dataset_generation_size)
 
-        self._generate_dataset(epochs, dataset_generation_size)
+        self._generate_dataset(self._epochs, self._dataset_generation_size)
         self._save_losses()
         self._save_models()
         self._save_samples()
@@ -231,7 +125,7 @@ class WGAN:
         generated_transactions = self._generator.predict(noise)
 
         filenames = [str(self._img_dir / ('%07d.png' % self._epoch)), str(self._img_dir / 'last.png')]
-        utils.save_samples(generated_transactions, rows, columns, filenames, True)
+        utils.save_samples(generated_transactions, rows, columns, filenames)
 
     def _save_latent_space(self):
         grid_size = 6
@@ -245,7 +139,7 @@ class WGAN:
         generated_data = self._generator.predict(latent_space_inputs)
 
         filenames = [str(self._img_dir / 'latent_space.png')]
-        utils.save_latent_space(generated_data, grid_size, filenames, True)
+        utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
         utils.save_losses(self._losses, str(self._img_dir / 'losses.png'))
@@ -267,9 +161,9 @@ class WGAN:
             pickle.dump(config, f)
 
     def _save_models(self):
-        self._gan.save(self._model_dir / 'wgan.h5')
+        # self._gan.save(self._model_dir / 'wgan.h5')
         self._generator.save(self._model_dir / 'generator.h5')
-        self._critic.save(self._model_dir / 'critic.h5')
+        # self._critic.save(self._model_dir / 'critic.h5')
 
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
@@ -278,4 +172,4 @@ class WGAN:
         np.save(self._generated_datesets_dir / 'last', generated_dataset)
 
     def get_models(self):
-        return self._gan, self._generator, self._critic
+        return self._generator, self._critic, self._generator_model, self._critic_model
