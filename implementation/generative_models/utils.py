@@ -62,6 +62,19 @@ def save_losses(losses, filename):
     plt.close()
 
 
+def save_losses_vae(losses, filename):
+    plt.subplots(2, 1, figsize=(15, 9))
+    plt.subplot(2, 1, 1)
+    plt.plot(losses)
+    plt.legend(['vae'])
+    plt.subplot(2, 1, 2)
+    plt.plot(losses[-1000:])
+    plt.legend(['vae'])
+    plt.savefig(filename)
+    plt.clf()
+    plt.close()
+
+
 def save_latent_space(generated_data, grid_size, filenames):
     is_image = False
     if generated_data.shape[1] == 100:

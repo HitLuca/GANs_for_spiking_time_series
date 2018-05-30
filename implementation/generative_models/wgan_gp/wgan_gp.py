@@ -1,9 +1,7 @@
 import sys
-
-sys.path.append("..")
-
 import pickle
 from keras.layers import *
+sys.path.append("..")
 import utils
 import wgan_gp_utils
 

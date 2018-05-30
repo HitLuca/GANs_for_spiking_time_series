@@ -2,169 +2,162 @@ from implementation.generative_models import utils
 from keras import Model
 from keras.layers import *
 from keras.optimizers import *
+import sys
+import pickle
+
+sys.path.append("..")
+import utils
+import gan_utils
 
 
 class GAN:
-    def __init__(self, timesteps, latent_dim, packing_degree, run_dir, img_dir, model_dir, generated_datesets_dir):
-        self._timesteps = timesteps
-        self._latent_dim = latent_dim
-        self._packing_degree = packing_degree
-        self._run_dir = run_dir
-        self._img_dir = img_dir
-        self._model_dir = model_dir
-        self._generated_dataset_dir = generated_datesets_dir
+    def __init__(self, config):
+        self._batch_size = config['batch_size']
+        self._epochs = config['epochs']
+        self._timesteps = config['timesteps']
+        self._n_critic = config['n_critic']
+        self._n_generator = config['n_generator']
+        self._latent_dim = config['latent_dim']
+
+        self._generator_lr = config['generator_lr']
+        self._critic_lr = config['critic_lr']
+        self._img_frequency = config['img_frequency']
+        self._loss_frequency = config['loss_frequency']
+        self._latent_space_frequency = config['latent_space_frequency']
+        self._model_save_frequency = config['model_save_frequency']
+        self._dataset_generation_frequency = config['dataset_generation_frequency']
+        self._dataset_generation_size = config['dataset_generation_size']
+        self._packing_degree = config['packing_degree']
+        self._run_dir = config['run_dir']
+        self._img_dir = config['img_dir']
+        self._model_dir = config['model_dir']
+        self._generated_datesets_dir = config['generated_datesets_dir']
+        self._use_mbd = config['use_mbd']
+        self._use_packing = config['use_packing']
 
         self._epoch = 0
         self._losses = [[], []]
+        self._build_models()
 
-    def build_model(self, generator_lr, discriminator_lr):
-        self._generator = self._build_generator()
-        self._discriminator = self._build_discriminator()
+    def _build_models(self):
+        self._generator = gan_utils.build_generator(self._latent_dim, self._timesteps)
+        self._discriminator = gan_utils.build_discriminator(self._timesteps, self._use_mbd, self._use_packing,
+                                                            self._packing_degree)
+        self._generator_model = gan_utils.build_generator_model(self._generator, self._discriminator, self._latent_dim,
+                                                                self._timesteps, self._use_packing,
+                                                                self._packing_degree, self._batch_size,
+                                                                self._generator_lr)
+        self._critic_model = gan_utils.build_discriminator_model(self._generator, self._discriminator, self._latent_dim,
+                                                                 self._timesteps, self._use_packing,
+                                                                 self._packing_degree,
+                                                                 self._batch_size,
+                                                                 self._critic_lr)
 
-        z = Input(shape=(self._latent_dim,))
-        input_samples = Input((self._timesteps,))
-        expanded_input_samples = Lambda(lambda x: K.expand_dims(x, -1))(input_samples)
+    def train(self, dataset):
+        ones = np.ones((self._batch_size, 1))
+        zeros = np.ones((self._batch_size, 1))
 
-        supporting_inputs = Input((self._timesteps, self._packing_degree))
-
-        utils.set_model_trainable(self._discriminator, False)
-
-        generated_samples = self._generator(z)
-        expanded_generatd_samples = Lambda(lambda x: K.expand_dims(x, -1))(generated_samples)
-        merged_generated_samples = Concatenate(-1)([expanded_generatd_samples, supporting_inputs])
-        
-        generated_discriminated = self._discriminator(merged_generated_samples)
-        
-        self._generator_model = Model([z, supporting_inputs], generated_discriminated, 'generator_model')
-        self._generator_model.compile(loss='binary_crossentropy', optimizer=RMSprop(generator_lr))
-        
-        utils.set_model_trainable(self._generator, False)
-        utils.set_model_trainable(self._discriminator, True)
-        
-        merged_input_samples = Concatenate(-1)([expanded_input_samples, supporting_inputs])
-        input_discriminated = self._discriminator(merged_input_samples)
-        
-        self._discriminator_model = Model([input_samples, supporting_inputs], input_discriminated)
-        self._discriminator_model.compile(loss='binary_crossentropy', optimizer=RMSprop(discriminator_lr))
-
-        return self._generator, self._discriminator, self._generator_model, self._discriminator_model
-
-    def _build_generator(self):
-        generator_inputs = Input((self._latent_dim,))
-        generated = generator_inputs
-
-        if self._latent_dim != 15:
-            generated = Dense(15)(generated)
-            generated = BatchNormalization()(generated)
-            generated = LeakyReLU(0.2)(generated)
-
-        generated = Lambda(lambda x: K.expand_dims(x))(generated)
-
-        generated = Conv1D(64, 3, padding='same')(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(32, 3, padding='same')(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(16, 3, padding='same')(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-        generated = UpSampling1D(2)(generated)
-
-        generated = Conv1D(1, 3, padding='same')(generated)
-        generated = BatchNormalization()(generated)
-        generated = LeakyReLU(0.2)(generated)
-
-        generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
-
-        generated = Dense(self._timesteps, activation='tanh')(generated)
-
-        generator = Model(generator_inputs, generated, 'generator')
-        return generator
-
-    def _build_discriminator(self):
-        discriminator_inputs = Input((self._timesteps,))
-        supporting_inputs = Input((self._timesteps, self._packing_degree))
-
-        discriminated = discriminator_inputs
-
-        discriminated = Lambda(lambda x: K.expand_dims(x))(discriminated)
-        discriminated = Concatenate(-1)([discriminated, supporting_inputs])
-
-        discriminated = Conv1D(16, 3, padding='same')(discriminated)
-        discriminated = BatchNormalization()(discriminated)
-        discriminated = LeakyReLU(0.2)(discriminated)
-        discriminated = MaxPooling1D(2, padding='same')(discriminated)
-
-        discriminated = Conv1D(32, 3, padding='same')(discriminated)
-        discriminated = BatchNormalization()(discriminated)
-        discriminated = LeakyReLU(0.2)(discriminated)
-        discriminated = MaxPooling1D(2, padding='same')(discriminated)
-
-        discriminated = Conv1D(64, 3, padding='same')(discriminated)
-        discriminated = BatchNormalization()(discriminated)
-        discriminated = LeakyReLU(0.2)(discriminated)
-        discriminated = MaxPooling1D(2, padding='same')(discriminated)
-
-        discriminated = Flatten()(discriminated)
-
-        discriminated = Dense(15)(discriminated)
-        discriminated = BatchNormalization()(discriminated)
-        discriminated = LeakyReLU(0.2)(discriminated)
-
-        discriminated = Dense(1, activation='sigmoid')(discriminated)
-
-        discriminator = Model([discriminator_inputs, supporting_inputs], discriminated, 'discriminator')
-
-        return discriminator
-
-    def train(self, batch_size, epochs, n_generator, n_discriminator, dataset,
-              img_frequency):
-        half_batch = int(batch_size / 2)
-
-        while self._epoch < epochs:
+        while self._epoch < self._epochs:
             self._epoch += 1
             discriminator_losses = []
-            for _ in range(n_discriminator):
-                indexes = np.random.randint(0, dataset.shape[0], half_batch)
-                batch_transactions = dataset[indexes]
+            for _ in range(self._n_critic):
+                indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
+                batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
+                noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
+                inputs = [batch_transactions, noise]
 
-                noise = np.random.normal(0, 1, (half_batch, self._latent_dim))
+                if self._use_packing:
+                    supporting_indexes = np.random.randint(0, dataset.shape[0],(self._batch_size * self._packing_degree))
+                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
+                                                                                  self._packing_degree)
+                    supporting_noise = np.random.normal(0, 1,(self._batch_size, self._latent_dim, self._packing_degree))
+                    inputs.extend([supporting_transactions, supporting_noise])
 
-                generated_transactions = self._generator.predict(noise)
+                discriminator_losses.append(self._critic_model.train_on_batch(inputs, [ones, zeros]))
+            discriminator_loss = np.mean(discriminator_losses)
 
-                discriminator_loss_real = self._discriminator.train_on_batch(
-                    batch_transactions, np.random.uniform(0.66, 1, (half_batch, 1)))
-                discriminator_loss_fake = self._discriminator.train_on_batch(
-                    generated_transactions, np.random.uniform(0, 0.33, (half_batch, 1)))
-                discriminator_loss = 0.5 * np.add(discriminator_loss_real,
-                                                  discriminator_loss_fake)
+            generator_losses = []
+            for _ in range(self._n_generator):
+                noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
+                inputs = [noise]
 
-            for _ in range(n_generator):
-                noise = np.random.normal(0, 1, (batch_size, self._latent_dim))
+                if self._use_packing:
+                    supporting_noise = np.random.normal(0, 1,(self._batch_size, self._latent_dim, self._packing_degree))
+                    inputs.append(supporting_noise)
 
-                generator_loss = self._gan.train_on_batch(
-                    noise, np.ones((batch_size, 1)))
+                generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
+            generator_loss = np.mean(generator_losses)
 
-            losses[0].append(generator_loss)
-            losses[1].append(discriminator_loss)
+            generator_loss = float(generator_loss)
+            discriminator_loss = float(discriminator_loss)
 
-            print("%d [D loss: %f] [G loss: %f]" % (epoch, discriminator_loss,
-                                                    generator_loss))
+            self._losses[0].append(generator_loss)
+            self._losses[1].append(discriminator_loss)
 
-            if epoch % img_frequency == 0:
-                self._save_imgs(epoch)
-                self._save_losses(losses)
+            print("%d [D loss: %f] [G loss: %f]" % (self._epoch, discriminator_loss, generator_loss))
 
-    def _save_imgs(self, epoch):
-        filenames = ['gan/%05d.png' % epoch, 'gan/last.png']
-        generate_save_images(self._generator, 5, 5, self._latent_dim, filenames)
+            if self._epoch % self._loss_frequency == 0:
+                self._save_losses()
 
-    @staticmethod
-    def _save_losses(losses):
-        filename = 'gan/losses.png'
-        save_losses(losses, filename)
+            if self._epoch % self._img_frequency == 0:
+                self._save_samples()
+
+            if self._epoch % self._latent_space_frequency == 0:
+                self._save_latent_space()
+
+            if self._epoch % self._model_save_frequency == 0:
+                self._save_models()
+
+            if self._epoch % self._dataset_generation_frequency == 0:
+                self._generate_dataset(self._epoch, self._dataset_generation_size)
+
+        self._generate_dataset(self._epochs, self._dataset_generation_size)
+        self._save_losses()
+        self._save_models()
+        self._save_samples()
+        self._save_latent_space()
+
+        return self._losses
+
+    def _save_samples(self):
+        rows, columns = 6, 6
+        noise = np.random.normal(0, 1, (rows * columns, self._latent_dim))
+        generated_transactions = self._generator.predict(noise)
+
+        filenames = [self._img_dir + ('/%07d.png' % self._epoch), self._img_dir + '/last.png']
+        utils.save_samples(generated_transactions, rows, columns, filenames)
+
+    def _save_latent_space(self):
+        grid_size = 6
+
+        latent_space_inputs = np.zeros((grid_size * grid_size, self._latent_dim))
+
+        for i, v_i in enumerate(np.linspace(-1.5, 1.5, grid_size, True)):
+            for j, v_j in enumerate(np.linspace(-1.5, 1.5, grid_size, True)):
+                latent_space_inputs[i * grid_size + j, :2] = [v_i, v_j]
+
+        generated_data = self._generator.predict(latent_space_inputs)
+
+        filenames = [self._img_dir + '/latent_space.png']
+        utils.save_latent_space(generated_data, grid_size, filenames)
+
+    def _save_losses(self):
+        utils.save_losses(self._losses, self._img_dir + '/losses.png')
+
+        with open(self._run_dir + '/losses.p', 'wb') as f:
+            pickle.dump(self._losses, f)
+
+    def _save_models(self):
+        # self._generator_model.save(self._model_dir + '/generator_model.h5')
+        # self._critic_model.save(self._model_dir + '/critic_model.h5')
+        self._generator.save(self._model_dir + '/generator.h5')
+        # self._critic.save(self._model_dir + '/critic.h5')
+
+    def _generate_dataset(self, epoch, dataset_generation_size):
+        z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
+        generated_dataset = self._generator.predict(z_samples)
+        np.save(self._generated_datesets_dir + ('/%d_generated_data' % epoch), generated_dataset)
+        np.save(self._generated_datesets_dir + '/last', generated_dataset)
+
+    def get_models(self):
+        return self._generator, self._discriminator, self._generator_model, self._critic_model
