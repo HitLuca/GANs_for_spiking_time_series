@@ -1,3 +1,4 @@
+import sys
 from functools import partial
 
 from keras import Model
@@ -5,7 +6,6 @@ from keras.layers import *
 from keras.layers.merge import _Merge
 from keras.optimizers import Adam
 
-import sys
 sys.path.append("..")
 import utils
 
@@ -49,7 +49,7 @@ def build_generator(latent_dim, timesteps):
 
 def build_critic(timesteps, use_mbd, use_packing, packing_degree):
     if use_packing:
-        critic_inputs = Input((timesteps, packing_degree+1))
+        critic_inputs = Input((timesteps, packing_degree + 1))
         criticized = critic_inputs
     else:
         critic_inputs = Input((timesteps,))
@@ -85,7 +85,8 @@ def build_critic(timesteps, use_mbd, use_packing, packing_degree):
     return critic
 
 
-def build_generator_model(generator, critic, latent_dim, timesteps, use_packing, packing_degree, batch_size, generator_lr):
+def build_generator_model(generator, critic, latent_dim, timesteps, use_packing, packing_degree, batch_size,
+                          generator_lr):
     utils.set_model_trainable(generator, True)
     utils.set_model_trainable(critic, False)
 
@@ -118,7 +119,8 @@ def build_generator_model(generator, critic, latent_dim, timesteps, use_packing,
     return generator_model
 
 
-def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, packing_degree, batch_size, critic_lr, gradient_penality_weight):
+def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, packing_degree, batch_size, critic_lr,
+                       gradient_penality_weight):
     utils.set_model_trainable(generator, False)
     utils.set_model_trainable(critic, True)
 

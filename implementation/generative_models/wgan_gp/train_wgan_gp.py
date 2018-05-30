@@ -1,6 +1,7 @@
+import sys
+
 from keras.callbacks import *
 
-import sys
 sys.path.append("..")
 import utils
 from wgan_gp import WGAN_GP
@@ -19,18 +20,18 @@ epochs = 300000
 n_critic = 5
 n_generator = 1
 latent_dim = 15
-generator_lr = 0.0001
-critic_lr = 0.0001
+generator_lr = 0.0005
+critic_lr = 0.0005
 img_frequency = 250
-loss_frequency = 500
+loss_frequency = 250
 latent_space_frequency = 500
 model_save_frequency = 25000
 dataset_generation_frequency = 25000
 dataset_generation_size = 50000
 gradient_penality_weight = 10
-use_mbd = False
-use_packing = True
-packing_degree = 3
+use_mbd = True
+use_packing = False
+packing_degree = 2
 
 assert (use_mbd and use_packing) is not True
 assert (use_packing and packing_degree > 0) or not use_packing

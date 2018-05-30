@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("..")
 
 import pickle
@@ -65,9 +66,12 @@ class WGAN_GP:
                 inputs = [batch_transactions, noise]
 
                 if self._use_packing:
-                    supporting_indexes = np.random.randint(0, dataset.shape[0], (self._batch_size * self._packing_degree))
-                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps, self._packing_degree)
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_indexes = np.random.randint(0, dataset.shape[0],
+                                                           (self._batch_size * self._packing_degree))
+                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
+                                                                                  self._packing_degree)
+                    supporting_noise = np.random.normal(0, 1,
+                                                        (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.extend([supporting_transactions, supporting_noise])
 
                 critic_losses.append(self._critic_model.train_on_batch(inputs, [ones, neg_ones, zeros]))
@@ -79,7 +83,8 @@ class WGAN_GP:
                 inputs = [noise]
 
                 if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_noise = np.random.normal(0, 1,
+                                                        (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.append(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))

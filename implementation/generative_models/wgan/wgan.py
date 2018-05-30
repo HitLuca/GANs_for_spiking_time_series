@@ -1,9 +1,9 @@
 import pickle
-
 import sys
+
 import wgan_utils
-from keras.layers import *
 from keras.initializers import RandomNormal
+from keras.layers import *
 
 sys.path.append("..")
 import utils
@@ -37,15 +37,20 @@ class WGAN:
 
         self._epoch = 0
         self._losses = [[], []]
-        self._weights_initializer = RandomNormal(stddev=0.02)
+        self._weights_initializer = RandomNormal(mean=1.0, stddev=0.02)
         self._build_models()
 
     def _build_models(self):
         self._generator = wgan_utils.build_generator(self._latent_dim, self._timesteps, self._weights_initializer)
-        self._critic = wgan_utils.build_critic(self._timesteps, self._weights_initializer, self._use_mbd, self._use_packing, self._packing_degree)
+        self._critic = wgan_utils.build_critic(self._timesteps, self._weights_initializer, self._use_mbd,
+                                               self._use_packing, self._packing_degree)
 
-        self._generator_model = wgan_utils.build_generator_model(self._generator, self._critic, self._generator_lr, self._latent_dim, self._batch_size, self._timesteps, self._use_packing, self._packing_degree)
-        self._critic_model = wgan_utils.build_critic_model(self._generator, self._critic, self._critic_lr, self._latent_dim, self._batch_size, self._timesteps, self._use_packing, self._packing_degree)
+        self._generator_model = wgan_utils.build_generator_model(self._generator, self._critic, self._generator_lr,
+                                                                 self._latent_dim, self._batch_size, self._timesteps,
+                                                                 self._use_packing, self._packing_degree)
+        self._critic_model = wgan_utils.build_critic_model(self._generator, self._critic, self._critic_lr,
+                                                           self._latent_dim, self._batch_size, self._timesteps,
+                                                           self._use_packing, self._packing_degree)
 
         return self._generator, self._critic
 
@@ -65,14 +70,16 @@ class WGAN:
 
                 if self._use_packing:
                     supporting_indexes = np.random.randint(0, dataset.shape[0], self._batch_size * self._packing_degree)
-                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps, self._packing_degree)
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
+                                                                                  self._packing_degree)
+                    supporting_noise = np.random.normal(0, 1,
+                                                        (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.extend([supporting_transactions, supporting_noise])
 
                 critic_loss = self._critic_model.train_on_batch(inputs, [ones, neg_ones])[0]
                 critic_losses.append(critic_loss)
 
-                utils.clip_weights(self._critic, self._clip_value)
+                wgan_utils.clip_weights(self._critic, self._clip_value)
             critic_loss = np.mean(critic_losses)
 
             generator_losses = []
@@ -81,8 +88,9 @@ class WGAN:
                 inputs = [noise]
 
                 if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
-                    inputs.append(supporting_noise)
+                    supporting_noise = np.random.normal(0, 1,
+                                                        (self._batch_size, self._latent_dim, self._packing_degree))
+                    inputs.extend(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
 
@@ -124,7 +132,7 @@ class WGAN:
         noise = np.random.normal(0, 1, (rows * columns, self._latent_dim))
         generated_transactions = self._generator.predict(noise)
 
-        filenames = [str(self._img_dir / ('%07d.png' % self._epoch)), str(self._img_dir / 'last.png')]
+        filenames = [self._img_dir + ('/%07d.png' % self._epoch), self._img_dir + '/last.png']
         utils.save_samples(generated_transactions, rows, columns, filenames)
 
     def _save_latent_space(self):
@@ -138,13 +146,13 @@ class WGAN:
 
         generated_data = self._generator.predict(latent_space_inputs)
 
-        filenames = [str(self._img_dir / 'latent_space.png')]
+        filenames = [self._img_dir + '/latent_space.png']
         utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
-        utils.save_losses(self._losses, str(self._img_dir / 'losses.png'))
+        utils.save_losses(self._losses, self._img_dir + '/losses.png')
 
-        with open(str(self._run_dir / 'losses.p'), 'wb') as f:
+        with open(self._run_dir + '/losses.p', 'wb') as f:
             pickle.dump(self._losses, f)
 
     def _save_config(self):
@@ -157,19 +165,19 @@ class WGAN:
             'generated_datesets_dir': self._generated_datesets_dir
         }
 
-        with open(str(self._run_dir / 'config.p'), 'wb') as f:
+        with open(str(self._run_dir + '/config.p'), 'wb') as f:
             pickle.dump(config, f)
 
     def _save_models(self):
         # self._gan.save(self._model_dir / 'wgan.h5')
-        self._generator.save(self._model_dir / 'generator.h5')
+        self._generator.save(self._model_dir + '/generator.h5')
         # self._critic.save(self._model_dir / 'critic.h5')
 
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
         generated_dataset = self._generator.predict(z_samples)
-        np.save(self._generated_datesets_dir / ('%d_generated_data' % epoch), generated_dataset)
-        np.save(self._generated_datesets_dir / 'last', generated_dataset)
+        np.save(self._generated_datesets_dir + ('/%d_generated_data' % epoch), generated_dataset)
+        np.save(self._generated_datesets_dir + '/last', generated_dataset)
 
     def get_models(self):
         return self._generator, self._critic, self._generator_model, self._critic_model

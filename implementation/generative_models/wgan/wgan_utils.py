@@ -1,7 +1,9 @@
+import sys
+
 from keras import Model
 from keras.layers import *
 from keras.optimizers import RMSprop
-import sys
+
 sys.path.append("..")
 import utils
 
@@ -89,7 +91,8 @@ def build_critic(timesteps, weights_initializer, use_mbd, use_packing, packing_d
     return critic
 
 
-def build_generator_model(generator, critic, generator_lr, latent_dim, batch_size, timesteps, use_packing, packing_degree):
+def build_generator_model(generator, critic, generator_lr, latent_dim, batch_size, timesteps, use_packing,
+                          packing_degree):
     utils.set_model_trainable(generator, True)
     utils.set_model_trainable(critic, False)
 
@@ -98,7 +101,8 @@ def build_generator_model(generator, critic, generator_lr, latent_dim, batch_siz
     if use_packing:
         supporting_noise_samples = Input((latent_dim, packing_degree))
 
-        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (batch_size * packing_degree, latent_dim)))(supporting_noise_samples)
+        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (batch_size * packing_degree, latent_dim)))(
+            supporting_noise_samples)
         generated_samples = generator(noise_samples)
         generated_samples = Lambda(lambda x: K.reshape(x, (batch_size, timesteps, 1)))(
             generated_samples)
@@ -106,7 +110,8 @@ def build_generator_model(generator, critic, generator_lr, latent_dim, batch_siz
         supporting_generated_samples = Lambda(lambda x: K.reshape(x, (batch_size, timesteps, packing_degree)))(
             supporting_generated_samples)
 
-        merged_generated_samples = Lambda(lambda x: K.concatenate(x, -1))([generated_samples, supporting_generated_samples])
+        merged_generated_samples = Lambda(lambda x: K.concatenate(x, -1))(
+            [generated_samples, supporting_generated_samples])
 
         generated_criticized = critic(merged_generated_samples)
 
@@ -132,7 +137,8 @@ def build_critic_model(generator, critic, critic_lr, latent_dim, batch_size, tim
         supporting_noise_samples = Input((latent_dim, packing_degree))
         supporting_real_samples = Input((timesteps, packing_degree))
 
-        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (batch_size * packing_degree, latent_dim)))(supporting_noise_samples)
+        reshaped_supporting_noise_samples = Lambda(lambda x: K.reshape(x, (batch_size * packing_degree, latent_dim)))(
+            supporting_noise_samples)
         generated_samples = generator(noise_samples)
         generated_supporting_samples = generator(reshaped_supporting_noise_samples)
 

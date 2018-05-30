@@ -1,14 +1,14 @@
-import keras.backend as K
+import os
 from datetime import datetime
+
+import keras
+import keras.backend as K
+import numpy as np
 from keras import initializers, regularizers, constraints
 from keras.engine import Layer, InputSpec
-import numpy as np
-from scipy.misc import imresize
-
-import matplotlib
 # matplotlib.use('Agg')
 from matplotlib import pyplot as plt
-import os
+from scipy.misc import imresize
 
 
 def set_model_trainable(model, trainable):
@@ -156,7 +156,13 @@ class MinibatchDiscrimination(Layer):
                                  trainable=True,
                                  constraint=self.W_constraint)
 
-        # Set built to true.
+        self.b = self.add_weight(shape=(self.nb_kernels),
+                                 initializer=keras.initializers.zeros,
+                                 name='bias',
+                                 regularizer=self.W_regularizer,
+                                 trainable=True,
+                                 constraint=self.W_constraint)
+
         super(MinibatchDiscrimination, self).build(input_shape)
 
     def call(self, x, mask=None):
@@ -164,11 +170,12 @@ class MinibatchDiscrimination(Layer):
         diffs = K.expand_dims(activation, 3) - K.expand_dims(K.permute_dimensions(activation, [1, 2, 0]), 0)
         abs_diffs = K.sum(K.abs(diffs), axis=2)
         minibatch_features = K.sum(K.exp(-abs_diffs), axis=2)
+        minibatch_features += self.b
         return K.concatenate([x, minibatch_features], 1)
 
     def compute_output_shape(self, input_shape):
         assert input_shape and len(input_shape) == 2
-        return input_shape[0], input_shape[1]+self.nb_kernels
+        return input_shape[0], input_shape[1] + self.nb_kernels
 
     def get_config(self):
         config = {'nb_kernels': self.nb_kernels,
@@ -199,6 +206,7 @@ def generate_run_dir():
     os.mkdir(generated_datesets_dir)
 
     return run_dir, img_dir, model_dir, generated_datesets_dir
+
 
 def wasserstein_loss(y_true, y_pred):
     return K.mean(y_true * y_pred)
