@@ -153,8 +153,8 @@ class WGAN_GP:
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
         generated_dataset = self._generator.predict(z_samples)
-        np.save(self._generated_datesets_dir / ('%d_generated_data' % epoch), generated_dataset)
-        np.save(self._generated_datesets_dir / 'last', generated_dataset)
+        np.save(self._generated_datesets_dir + ('/%d_generated_data' % epoch), generated_dataset)
+        np.save(self._generated_datesets_dir + '/last', generated_dataset)
 
     def get_models(self):
         return self._generator, self._critic, self._generator_model, self._critic_model

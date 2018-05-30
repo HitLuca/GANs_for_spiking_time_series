@@ -121,12 +121,6 @@ def load_resized_mnist():
     return dataset
 
 
-def clip_weights(model, clip_value):
-    for l in model.layers:
-        weights = [np.clip(w, -clip_value, clip_value) for w in l.get_weights()]
-        l.set_weights(weights)
-
-
 class MinibatchDiscrimination(Layer):
     def __init__(self, nb_kernels, kernel_dim, init='glorot_uniform', weights=None,
                  W_regularizer=None, activity_regularizer=None,

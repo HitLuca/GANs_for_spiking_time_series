@@ -55,7 +55,7 @@ def build_critic(timesteps, use_mbd, use_packing, packing_degree):
         critic_inputs = Input((timesteps,))
         criticized = Lambda(lambda x: K.expand_dims(x, -1))(critic_inputs)
 
-    criticized = Conv1D(32, 3)(criticized)
+    criticized = Conv1D(32, 3, padding='same')(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
@@ -199,6 +199,7 @@ def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, pa
                              loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss])
     return critic_model
 
+
 def gradient_penalty_loss(_, y_pred, averaged_samples, gradient_penalty_weight):
     gradients = K.gradients(y_pred, averaged_samples)[0]
     gradients_sqr = K.square(gradients)
@@ -216,6 +217,4 @@ class RandomWeightedAverage(_Merge):
     def _merge_function(self, inputs):
         weights = K.random_uniform((self._batch_size, 1))
         averaged_inputs = (weights * inputs[0]) + ((1 - weights) * inputs[1])
-        # weights = K.random_uniform((self._batch_size, 1))
-        # averaged_inputs = (weights * averaged_inputs) + ((1 - weights) * inputs[2])
         return averaged_inputs

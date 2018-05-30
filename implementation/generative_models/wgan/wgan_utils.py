@@ -161,3 +161,9 @@ def build_critic_model(generator, critic, critic_lr, latent_dim, batch_size, tim
                              [real_criticized, generated_criticized], 'critic_model')
         critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr))
     return critic_model
+
+
+def clip_weights(model, clip_value):
+    for l in model.layers:
+        weights = [np.clip(w, -clip_value, clip_value) for w in l.get_weights()]
+        l.set_weights(weights)
