@@ -6,6 +6,7 @@ import keras.backend as K
 import numpy as np
 from keras import initializers, regularizers, constraints
 from keras.engine import Layer, InputSpec
+# import matplotlib
 # matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from scipy.misc import imresize
@@ -69,6 +70,27 @@ def save_losses_vae(losses, filename):
     plt.legend(['vae'])
     plt.subplot(2, 1, 2)
     plt.plot(losses[-1000:])
+    plt.legend(['vae'])
+    plt.savefig(filename)
+    plt.clf()
+    plt.close()
+
+
+def save_losses_wgan_gp_vae(losses, filename):
+    plt.subplots(4, 1, figsize=(15, 18))
+    plt.subplot(4, 1, 1)
+    plt.plot(losses[0])
+    plt.plot(losses[1])
+    plt.legend(['generator', 'critic'])
+    plt.subplot(4, 1, 2)
+    plt.plot(losses[0][-1000:])
+    plt.plot(losses[1][-1000:])
+    plt.legend(['generator', 'critic'])
+    plt.subplot(4, 1, 3)
+    plt.plot(losses[2])
+    plt.legend(['vae'])
+    plt.subplot(4, 1, 4)
+    plt.plot(losses[2][-1000:])
     plt.legend(['vae'])
     plt.savefig(filename)
     plt.clf()
@@ -169,9 +191,9 @@ class MinibatchDiscrimination(Layer):
                                  trainable=True,
                                  constraint=self.W_constraint)
 
-        self.b = self.add_weight(shape=(self.nb_kernels),
-                                 initializer=keras.initializers.zeros,
-                                 name='bias',
+        self.b = self.add_weight(shape=(self.nb_kernels,),
+                                 initializer=keras.initializers.zeros(),
+                                 name='kernel',
                                  regularizer=self.W_regularizer,
                                  trainable=True,
                                  constraint=self.W_constraint)
