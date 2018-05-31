@@ -81,13 +81,13 @@ def build_decoder(latent_dim, timesteps):
     return decoder
 
 
-def build_vae_model(encoder, decoder, latent_dim, timesteps, batch_size, lr):
+def build_vae_model(encoder, decoder, latent_dim, timesteps, lr):
     inputs = Input((timesteps,))
     z = Input((latent_dim,))
 
     z_mean, z_log_var = encoder(inputs)
 
-    sampled_z = Lambda(sampling, arguments={'batch_size':batch_size, 'latent_dim':latent_dim})([z_mean, z_log_var])
+    sampled_z = Lambda(sampling)([z_mean, z_log_var])
     decoded_inputs = decoder(sampled_z)
 
     vae_model = Model(inputs, decoded_inputs)
@@ -97,10 +97,12 @@ def build_vae_model(encoder, decoder, latent_dim, timesteps, batch_size, lr):
     return vae_model, generator
 
 
-def sampling(args, batch_size, latent_dim):
+def sampling(args):
     z_mean, z_log_var = args
-    epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0., stddev=1.0)
-    return z_mean + K.exp(z_log_var / 2.0) * epsilon
+    batch_size = K.shape(z_mean)[0]
+    latent_dim = K.int_shape(z_mean)[1]
+    epsilon = K.random_normal(shape=(batch_size, latent_dim))
+    return z_mean + K.exp(z_log_var) * epsilon
 
 
 def vae_loss(z_mean, z_log_var):

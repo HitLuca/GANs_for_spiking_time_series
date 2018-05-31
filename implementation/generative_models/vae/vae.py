@@ -32,7 +32,7 @@ class VAE:
     def _build_models(self):
         self._encoder = vae_utils.build_encoder(self._latent_dim, self._timesteps)
         self._decoder = vae_utils.build_decoder(self._latent_dim, self._timesteps)
-        self._vae_model, self._generator = vae_utils.build_vae_model(self._encoder, self._decoder, self._latent_dim, self._timesteps, self._batch_size, self._lr)
+        self._vae_model, self._generator = vae_utils.build_vae_model(self._encoder, self._decoder, self._latent_dim, self._timesteps, self._lr)
 
     def train(self, dataset):
         while self._epoch < self._epochs:
