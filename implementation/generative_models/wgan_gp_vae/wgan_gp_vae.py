@@ -44,9 +44,15 @@ class WGAN_GP_VAE:
                                                             self._decoder_generator,
                                                             self._critic_hidden,
                                                             self._timesteps,
+<<<<<<< HEAD
                                                             self._vae_lr)
 
         self._generator_model, self._generator = wgan_gp_vae_utils.build_generator_model(self._encoder, self._decoder_generator, self._critic, self._latent_dim, self._vae_lr)
+=======
+                                                            self._generator_vae_lr)
+
+        self._generator_model, self._generator = wgan_gp_vae_utils.build_generator_model(self._encoder, self._decoder_generator, self._critic, self._latent_dim, self._generator_vae_lr)
+>>>>>>> origin/master
 
         self._critic_model = wgan_gp_vae_utils.build_critic_model(self._encoder, self._decoder_generator, self._critic,
                                                                   self._latent_dim,
