@@ -16,7 +16,6 @@ class WGAN_GP_VAE:
         self._n_critic = config['n_critic']
         self._n_generator_vae = config['n_generator_vae']
         self._latent_dim = config['latent_dim']
-        self._generator_lr = config['generator_lr']
         self._vae_lr = config['vae_lr']
         self._critic_lr = config['critic_lr']
         self._img_frequency = config['img_frequency']
@@ -32,7 +31,7 @@ class WGAN_GP_VAE:
         self._generated_datesets_dir = config['generated_datesets_dir']
 
         self._epoch = 0
-        self._losses = [[], [], []]
+        self._losses = [[], []]
         self._build_models()
 
     def _build_models(self):
@@ -40,12 +39,14 @@ class WGAN_GP_VAE:
         self._decoder_generator = wgan_gp_vae_utils.build_decoder(self._latent_dim, self._timesteps)
         self._critic, self._critic_hidden = wgan_gp_vae_utils.build_critic(self._timesteps)
 
-        self._vae_model = wgan_gp_vae_utils.build_vae_model(self._encoder,
-                                                            self._decoder_generator,
-                                                            self._critic_hidden,
-                                                            self._timesteps,
-                                                            self._vae_lr)
-        self._generator_model, self._generator = wgan_gp_vae_utils.build_generator_model(self._encoder, self._decoder_generator, self._critic, self._latent_dim, self._generator_lr)
+        self._vae_model, self._generator = wgan_gp_vae_utils.build_vae_model(self._encoder,
+                                                                             self._decoder_generator,
+                                                                             self._critic_hidden,
+                                                                             self._critic,
+                                                                             self._latent_dim,
+                                                                             self._timesteps,
+                                                                             self._vae_lr)
+
         self._critic_model = wgan_gp_vae_utils.build_critic_model(self._encoder, self._decoder_generator, self._critic,
                                                                   self._latent_dim,
                                                                   self._timesteps, self._batch_size, self._critic_lr,
@@ -69,31 +70,23 @@ class WGAN_GP_VAE:
             critic_loss = np.mean(critic_losses)
 
             generator_losses = []
-            vae_losses = []
             for _ in range(self._n_generator_vae):
                 indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
                 batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
-                inputs = [batch_transactions]
-
-                vae_losses.append(self._vae_model.train_on_batch(inputs, [zeros]))
-
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
-                inputs = [noise]
+                inputs = [batch_transactions, noise]
 
-                generator_losses.append(self._generator_model.train_on_batch(inputs, [ones]))
+                generator_losses.append(self._vae_model.train_on_batch(inputs, [ones]))
 
             generator_loss = np.mean(generator_losses)
-            vae_loss = np.mean(vae_losses)
 
             generator_loss = float(-generator_loss)
             critic_loss = float(-critic_loss)
-            vae_loss = float(vae_loss)
 
             self._losses[0].append(generator_loss)
             self._losses[1].append(critic_loss)
-            self._losses[2].append(vae_loss)
 
-            print("%d [C loss: %f] [G loss: %f] [V loss: %f]" % (self._epoch, critic_loss, generator_loss, vae_loss))
+            print("%d [C loss: %f] [G loss: %f]" % (self._epoch, critic_loss, generator_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
@@ -141,7 +134,7 @@ class WGAN_GP_VAE:
         utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
-        utils.save_losses_wgan_gp_vae(self._losses, self._img_dir + '/losses.png')
+        utils.save_losses(self._losses, self._img_dir + '/losses.png')
 
         with open(self._run_dir + '/losses.p', 'wb') as f:
             pickle.dump(self._losses, f)

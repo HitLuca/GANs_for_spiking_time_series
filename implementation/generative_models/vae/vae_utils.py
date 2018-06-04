@@ -9,32 +9,32 @@ def build_encoder(latent_dim, timesteps):
     encoded = Lambda(lambda x: K.expand_dims(x, -1))(encoder_inputs)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
 
     encoded = Flatten()(encoded)
     
     encoded = Dense(50)(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
 
     encoded = Dense(latent_dim)(encoded)
-    encoded = BatchNormalization()(encoded)
+    # encoded = BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
 
     z_mean = Dense(latent_dim)(encoded)
@@ -49,28 +49,28 @@ def build_decoder(latent_dim, timesteps):
     decoded = decoder_inputs
 
     decoded = Dense(15)(decoded)
-    decoded = BatchNormalization()(decoded)
+    # decoded = BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.expand_dims(x))(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = BatchNormalization()(decoded)
+    # decoded = BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = BatchNormalization()(decoded)
+    # decoded = BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = BatchNormalization()(decoded)
+    # decoded = BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(1, 3, padding='same')(decoded)
-    decoded = BatchNormalization()(decoded)
+    # decoded = BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.squeeze(x, -1))(decoded)

@@ -13,10 +13,11 @@ dataset = utils.load_resized_mnist()
 
 batch_size = 64
 epochs = 300000
-latent_dim = 15
+latent_dim = 2
 lr = 0.0001
 img_frequency = 1000
 loss_frequency = 1000
+latent_space_frequency = 2500
 model_save_frequency = 3000
 dataset_generation_frequency = 25000
 dataset_generation_size = 100000
@@ -32,6 +33,7 @@ config = {
         'latent_dim': latent_dim,
         'img_frequency': img_frequency,
         'loss_frequency': loss_frequency,
+        'latent_space_frequency': latent_space_frequency,
         'model_save_frequency': model_save_frequency,
         'dataset_generation_frequency': dataset_generation_frequency,
         'dataset_generation_size': dataset_generation_size,

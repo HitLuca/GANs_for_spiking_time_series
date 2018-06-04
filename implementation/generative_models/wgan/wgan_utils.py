@@ -13,28 +13,28 @@ def build_generator(latent_dim, timesteps, kernel_initializer):
     generated = generator_inputs
 
     generated = Dense(15, kernel_initializer=kernel_initializer)(generated)
-    generated = BatchNormalization()(generated)
+    # generated = BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.expand_dims(x))(generated)
 
     generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    generated = BatchNormalization()(generated)
+    # generated = BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    generated = BatchNormalization()(generated)
+    # generated = BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    generated = BatchNormalization()(generated)
+    # generated = BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(1, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    generated = BatchNormalization()(generated)
+    # generated = BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
@@ -54,22 +54,22 @@ def build_critic(timesteps, weights_initializer, use_mbd, use_packing, packing_d
         criticized = Lambda(lambda x: K.expand_dims(x, -1))(critic_inputs)
 
     criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
     criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
     criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
     criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
 
     criticized = Flatten()(criticized)
@@ -77,11 +77,11 @@ def build_critic(timesteps, weights_initializer, use_mbd, use_packing, packing_d
         criticized = utils.MinibatchDiscrimination(15, 3)(criticized)
 
     criticized = Dense(50, kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
 
     criticized = Dense(15, kernel_initializer=weights_initializer)(criticized)
-    criticized = BatchNormalization()(criticized)
+    # criticized = BatchNormalization()(criticized)
     criticized = LeakyReLU(0.2)(criticized)
 
     criticized = Dense(1, kernel_initializer=weights_initializer)(criticized)

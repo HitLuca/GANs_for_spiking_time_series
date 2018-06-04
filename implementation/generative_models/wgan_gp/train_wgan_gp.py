@@ -15,13 +15,13 @@ dataset = utils.load_splitted_dataset(normalized_transactions_filepath, timestep
 
 np.random.shuffle(dataset)
 
-batch_size = 32
+batch_size = 64
 epochs = 300000
 n_critic = 5
 n_generator = 1
-latent_dim = 15
-generator_lr = 0.0005
-critic_lr = 0.0005
+latent_dim = 2
+generator_lr = 0.0001
+critic_lr = 0.0001
 img_frequency = 250
 loss_frequency = 250
 latent_space_frequency = 500

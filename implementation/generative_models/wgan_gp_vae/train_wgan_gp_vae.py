@@ -19,8 +19,7 @@ batch_size = 64
 epochs = 300000
 n_critic = 5
 n_generator_vae = 1
-latent_dim = 15
-generator_lr = 0.00005
+latent_dim = 2
 vae_lr = 0.0001
 critic_lr = 0.0001
 img_frequency = 250
@@ -40,7 +39,6 @@ config = {
         'n_critic': n_critic,
         'n_generator_vae': n_generator_vae,
         'latent_dim': latent_dim,
-        'generator_lr': generator_lr,
         'vae_lr': vae_lr,
         'critic_lr': critic_lr,
         'img_frequency': img_frequency,

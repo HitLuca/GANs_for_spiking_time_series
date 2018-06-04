@@ -17,6 +17,7 @@ class VAE:
         self._latent_dim = config['latent_dim']
         self._img_frequency = config['img_frequency']
         self._loss_frequency = config['loss_frequency']
+        self._latent_space_frequency = config['latent_space_frequency']
         self._model_save_frequency = config['model_save_frequency']
         self._dataset_generation_frequency = config['dataset_generation_frequency']
         self._dataset_generation_size = config['dataset_generation_size']
@@ -51,8 +52,8 @@ class VAE:
             if self._epoch % self._img_frequency == 0:
                 self._save_samples()
 
-            # if self._epoch % self._latent_space_frequency == 0:
-            #     self._save_latent_space()
+            if self._epoch % self._latent_space_frequency == 0:
+                self._save_latent_space()
 
             if self._epoch % self._model_save_frequency == 0:
                 self._save_models()
