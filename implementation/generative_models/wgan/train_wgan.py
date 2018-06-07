@@ -23,7 +23,7 @@ latent_dim = 2
 generator_lr = 0.00005
 critic_lr = 0.00005
 clip_value = 0.01
-img_frequency = 500
+img_frequency = 250
 loss_frequency = 500
 latent_space_frequency = 1000
 model_save_frequency = 25000
@@ -31,7 +31,7 @@ dataset_generation_frequency = 25000
 dataset_generation_size = 50000
 use_mbd = False
 use_packing = False
-packing_degree = 1
+packing_degree = 2
 
 assert (use_mbd and use_packing) is not True
 assert (use_packing and packing_degree > 0) or not use_packing

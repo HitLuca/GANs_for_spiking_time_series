@@ -37,17 +37,17 @@ class WGAN:
 
         self._epoch = 0
         self._losses = [[], []]
-        self._weights_initializer = RandomNormal(mean=1.0, stddev=0.02)
         self._build_models()
 
     def _build_models(self):
-        self._generator = wgan_utils.build_generator(self._latent_dim, self._timesteps, self._weights_initializer)
-        self._critic = wgan_utils.build_critic(self._timesteps, self._weights_initializer, self._use_mbd,
+        self._generator = wgan_utils.build_generator(self._latent_dim, self._timesteps)
+        self._critic = wgan_utils.build_critic(self._timesteps, self._use_mbd,
                                                self._use_packing, self._packing_degree)
 
         self._generator_model = wgan_utils.build_generator_model(self._generator, self._critic, self._generator_lr,
                                                                  self._latent_dim, self._batch_size, self._timesteps,
                                                                  self._use_packing, self._packing_degree)
+
         self._critic_model = wgan_utils.build_critic_model(self._generator, self._critic, self._critic_lr,
                                                            self._latent_dim, self._batch_size, self._timesteps,
                                                            self._use_packing, self._packing_degree)

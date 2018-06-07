@@ -1,5 +1,6 @@
 import sys
 
+import keras
 from keras import Model
 from keras.layers import *
 from keras.optimizers import RMSprop
@@ -8,44 +9,41 @@ sys.path.append("..")
 import utils
 
 
-def build_generator(latent_dim, timesteps, kernel_initializer):
+def build_generator(latent_dim, timesteps):
     generator_inputs = Input((latent_dim,))
     generated = generator_inputs
 
-    generated = Dense(15, kernel_initializer=kernel_initializer)(generated)
-    # generated = BatchNormalization()(generated)
+    generated = Dense(15)(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.expand_dims(x))(generated)
 
-    generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    # generated = BatchNormalization()(generated)
+    generated = Conv1D(32, 3, padding='same')(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
-    generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    # generated = BatchNormalization()(generated)
+    generated = Conv1D(32, 3, padding='same')(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
-    generated = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    # generated = BatchNormalization()(generated)
+    generated = Conv1D(32, 3, padding='same')(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
-    generated = Conv1D(1, 3, padding='same', kernel_initializer=kernel_initializer)(generated)
-    # generated = BatchNormalization()(generated)
+    generated = Conv1D(1, 3, padding='same')(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
 
-    generated = Dense(timesteps, activation='tanh', kernel_initializer=kernel_initializer)(generated)
+    generated = Dense(timesteps, activation='tanh')(generated)
 
     generator = Model(generator_inputs, generated, 'generator')
     return generator
 
 
-def build_critic(timesteps, weights_initializer, use_mbd, use_packing, packing_degree):
+def build_critic(timesteps, use_mbd, use_packing, packing_degree):
+    kernel_initializer = keras.initializers.RandomNormal(1, 0.02)
+
     if use_packing:
         critic_inputs = Input((timesteps, packing_degree + 1))
         criticized = critic_inputs
@@ -53,38 +51,30 @@ def build_critic(timesteps, weights_initializer, use_mbd, use_packing, packing_d
         critic_inputs = Input((timesteps,))
         criticized = Lambda(lambda x: K.expand_dims(x, -1))(critic_inputs)
 
-    criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
-    criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
-    criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
-    criticized = Conv1D(32, 3, padding='same', kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Conv1D(32, 3, padding='same', kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
 
     criticized = Flatten()(criticized)
     if use_mbd:
         criticized = utils.MinibatchDiscrimination(15, 3)(criticized)
 
-    criticized = Dense(50, kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Dense(50, kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
-
-    criticized = Dense(15, kernel_initializer=weights_initializer)(criticized)
-    # criticized = BatchNormalization()(criticized)
+    criticized = Dense(15, kernel_initializer=kernel_initializer)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
-
-    criticized = Dense(1, kernel_initializer=weights_initializer)(criticized)
+    criticized = Dense(1, kernel_initializer=kernel_initializer)(criticized)
 
     critic = Model(critic_inputs, criticized, 'critic')
 
@@ -121,14 +111,14 @@ def build_generator_model(generator, critic, generator_lr, latent_dim, batch_siz
         generated_samples = generator(noise_samples)
         generated_criticized = critic(generated_samples)
 
-        generator_model = Model([noise_samples], generated_criticized, 'generator_model')
+        generator_model = Model(noise_samples, generated_criticized, 'generator_model')
         generator_model.compile(loss=utils.wasserstein_loss, optimizer=RMSprop(generator_lr))
     return generator_model
 
 
 def build_critic_model(generator, critic, critic_lr, latent_dim, batch_size, timesteps, use_packing, packing_degree):
-    utils.set_model_trainable(generator, True)
-    utils.set_model_trainable(critic, False)
+    utils.set_model_trainable(generator, False)
+    utils.set_model_trainable(critic, True)
 
     noise_samples = Input((latent_dim,))
     real_samples = Input((timesteps,))

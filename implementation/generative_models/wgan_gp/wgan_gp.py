@@ -4,6 +4,7 @@ from keras.layers import *
 sys.path.append("..")
 import utils
 import wgan_gp_utils
+import os
 
 
 class WGAN_GP:
@@ -31,6 +32,9 @@ class WGAN_GP:
         self._generated_datesets_dir = config['generated_datesets_dir']
         self._use_mbd = config['use_mbd']
         self._use_packing = config['use_packing']
+
+        self._lr_decay_factor = config['lr_decay_factor']
+        self._lr_decay_steps = config['lr_decay_steps']
 
         self._epoch = 0
         self._losses = [[], []]
@@ -81,8 +85,7 @@ class WGAN_GP:
                 inputs = [noise]
 
                 if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1,
-                                                        (self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.append(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
@@ -109,9 +112,12 @@ class WGAN_GP:
                 self._save_models()
 
             if self._epoch % self._dataset_generation_frequency == 0:
-                self._generate_dataset(self._epoch, self._dataset_generation_size)
+                self._generate_dataset()
 
-        self._generate_dataset(self._epochs, self._dataset_generation_size)
+            if self._epoch % self._lr_decay_steps == 0:
+                self._apply_lr_decay()
+
+        self._generate_dataset()
         self._save_losses()
         self._save_models()
         self._save_samples()
@@ -148,16 +154,27 @@ class WGAN_GP:
             pickle.dump(self._losses, f)
 
     def _save_models(self):
-        # self._generator_model.save(self._model_dir + '/generator_model.h5')
-        # self._critic_model.save(self._model_dir + '/critic_model.h5')
-        self._generator.save(self._model_dir + '/generator.h5')
-        # self._critic.save(self._model_dir + '/critic.h5')
+        dir = self._model_dir + '/' + str(self._epoch) + '/'
+        os.mkdir(dir)
+        self._generator_model.save(dir + 'generator_model.h5')
+        self._critic_model.save(dir + 'critic_model.h5')
+        self._generator.save(dir + 'generator.h5')
+        self._critic.save(dir + 'critic.h5')
 
-    def _generate_dataset(self, epoch, dataset_generation_size):
-        z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
+    def _generate_dataset(self):
+        z_samples = np.random.normal(0, 1, (self._dataset_generation_size, self._latent_dim))
         generated_dataset = self._generator.predict(z_samples)
-        np.save(self._generated_datesets_dir + ('/%d_generated_data' % epoch), generated_dataset)
+        np.save(self._generated_datesets_dir + ('/%d_generated_data' % self._epoch), generated_dataset)
         np.save(self._generated_datesets_dir + '/last', generated_dataset)
 
     def get_models(self):
         return self._generator, self._critic, self._generator_model, self._critic_model
+
+    def _apply_lr_decay(self):
+        lr_tensor = self._generator_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)
+
+        lr_tensor = self._critic_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)
