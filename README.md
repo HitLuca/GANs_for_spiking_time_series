@@ -1,2 +1,2 @@
-# Generative Adversarial Networks for dataset augmentation and data privacy
+# Generative Adversarial Networks for time-series generation
 Internship project for the final thesis at UvA
