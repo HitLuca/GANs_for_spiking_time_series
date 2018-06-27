@@ -16,22 +16,22 @@ def build_encoder(latent_dim, timesteps):
     encoded = Lambda(lambda x: K.expand_dims(x, -1))(encoder_inputs)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    # encoded = BatchNormalization()(encoded)
+    encoded = utils.BatchNormalizationGAN()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    # encoded = BatchNormalization()(encoded)
+    encoded = utils.BatchNormalizationGAN()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    # encoded = BatchNormalization()(encoded)
+    encoded = utils.BatchNormalizationGAN()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    # encoded = BatchNormalization()(encoded)
+    encoded = utils.BatchNormalizationGAN()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
 
     encoded = Flatten()(encoded)
@@ -48,28 +48,28 @@ def build_decoder(latent_dim, timesteps):
     decoded = decoder_inputs
 
     decoded = Dense(15)(decoded)
-    # decoded = BatchNormalization()(decoded)
+    decoded = utils.BatchNormalizationGAN()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.expand_dims(x))(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    # decoded = BatchNormalization()(decoded)
+    decoded = utils.BatchNormalizationGAN()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    # decoded = BatchNormalization()(decoded)
+    decoded = utils.BatchNormalizationGAN()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    # decoded = BatchNormalization()(decoded)
+    decoded = utils.BatchNormalizationGAN()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(1, 3, padding='same')(decoded)
-    # decoded = BatchNormalization()(decoded)
+    decoded = utils.BatchNormalizationGAN()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.squeeze(x, -1))(decoded)
@@ -114,7 +114,7 @@ def build_critic(timesteps):
     return critic, critic_hidden
 
 
-def build_vae_model(encoder, decoder_generator, critic_hidden, critic, latent_dim, timesteps, vae_lr):
+def build_vae_model(encoder, decoder_generator, critic_hidden, critic, latent_dim, timesteps, gamma, vae_lr):
     utils.set_model_trainable(encoder, True)
     utils.set_model_trainable(decoder_generator, True)
     utils.set_model_trainable(critic_hidden, False)
@@ -134,38 +134,20 @@ def build_vae_model(encoder, decoder_generator, critic_hidden, critic, latent_di
     decoded_criticized = critic_hidden(decoded_inputs)
 
     generator_vae_model = Model([real_samples, noise_samples], [generated_criticized])
-    generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9), loss=custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized))
+    generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9), loss=custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma))
 
     generator_model = Model(noise_samples, generated_samples)
     return generator_vae_model, generator_model
 
 
-def custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized):
+def custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma):
     def loss(y_true, y_pred):
         gan_loss = utils.wasserstein_loss(y_true, y_pred)
         xent_loss = mean_squared_error(real_criticized, decoded_criticized)
         kl_loss = - 0.5 * K.mean(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=1)
         vae_loss = xent_loss + kl_loss
-        return 0.4 * gan_loss + (1-0.4) * vae_loss
+        return gamma * gan_loss + (1 - gamma) * vae_loss
     return loss
-
-
-# def build_generator_model(encoder, decoder_generator, critic, latent_dim, generator_lr):
-#     utils.set_model_trainable(encoder, False)
-#     utils.set_model_trainable(decoder_generator, True)
-#     utils.set_model_trainable(critic, False)
-#
-#     noise_samples = Input((latent_dim,))
-#
-#     generated_samples = decoder_generator(noise_samples)
-#     generated_criticized = critic(generated_samples)
-#
-#     generator_model = Model(noise_samples, generated_criticized)
-#     generator_model.compile(optimizer=Adam(lr=generator_lr), loss=utils.wasserstein_loss)
-#
-#     generator = Model(noise_samples, generated_samples)
-#
-#     return generator_model, generator
 
 
 def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps, batch_size, critic_lr, gradient_penality_weight):

@@ -1,6 +1,7 @@
 import pickle
 import sys
 
+import os
 from keras.layers import *
 
 sys.path.append("..")
@@ -29,6 +30,10 @@ class WGAN_GP_VAE:
         self._img_dir = config['img_dir']
         self._model_dir = config['model_dir']
         self._generated_datesets_dir = config['generated_datesets_dir']
+        self._gamma = config['gamma']
+
+        self._lr_decay_factor = config['lr_decay_factor']
+        self._lr_decay_steps = config['lr_decay_steps']
 
         self._epoch = 0
         self._losses = [[], []]
@@ -45,6 +50,7 @@ class WGAN_GP_VAE:
                                                                              self._critic,
                                                                              self._latent_dim,
                                                                              self._timesteps,
+                                                                             self._gamma,
                                                                              self._vae_lr)
 
         self._critic_model = wgan_gp_vae_utils.build_critic_model(self._encoder, self._decoder_generator, self._critic,
@@ -101,9 +107,12 @@ class WGAN_GP_VAE:
                 self._save_models()
 
             if self._epoch % self._dataset_generation_frequency == 0:
-                self._generate_dataset(self._epoch, self._dataset_generation_size)
+                self._generate_dataset()
 
-        self._generate_dataset(self._epochs, self._dataset_generation_size)
+            if self._epoch % self._lr_decay_steps == 0:
+                self._apply_lr_decay()
+
+        self._generate_dataset()
         self._save_losses()
         self._save_models()
         self._save_samples()
@@ -140,16 +149,29 @@ class WGAN_GP_VAE:
             pickle.dump(self._losses, f)
 
     def _save_models(self):
-        # self._generator_model.save(self._model_dir + '/generator_model.h5')
-        # self._critic_model.save(self._model_dir + '/critic_model.h5')
-        self._generator.save(self._model_dir + '/generator.h5')
-        # self._critic.save(self._model_dir + '/critic.h5')
+        dir = self._model_dir + '/' + str(self._epoch) + '/'
+        os.mkdir(dir)
+        self._vae_model.save(dir + 'vae_model.h5')
+        self._critic_model.save(dir + 'critic_model.h5')
+        self._generator.save(dir + 'generator.h5')
+        self._encoder.save(dir + 'encoder.h5')
+        self._decoder_generator.save(dir + 'decoder_generator.h5')
+        self._critic.save(dir + 'critic.h5')
 
-    def _generate_dataset(self, epoch, dataset_generation_size):
-        z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
+    def _generate_dataset(self):
+        z_samples = np.random.normal(0, 1, (self._dataset_generation_size, self._latent_dim))
         generated_dataset = self._generator.predict(z_samples)
-        np.save(self._generated_datesets_dir + ('/%d_generated_data' % epoch), generated_dataset)
+        np.save(self._generated_datesets_dir + ('/%d_generated_data' % self._epoch), generated_dataset)
         np.save(self._generated_datesets_dir + '/last', generated_dataset)
 
     def get_models(self):
-        return self._generator, self._critic, self._generator_model, self._critic_model
+        return self._generator, self._critic, self._vae_model, self._critic_model
+
+    def _apply_lr_decay(self):
+        lr_tensor = self._vae_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)
+
+        lr_tensor = self._critic_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)

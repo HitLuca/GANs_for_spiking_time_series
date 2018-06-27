@@ -16,19 +16,23 @@ dataset = utils.load_splitted_dataset(normalized_transactions_filepath, timestep
 np.random.shuffle(dataset)
 
 batch_size = 64
-epochs = 300000
+epochs = 1000000
 n_critic = 5
 n_generator_vae = 1
 latent_dim = 2
-vae_lr = 0.0001
-critic_lr = 0.0001
-img_frequency = 250
-loss_frequency = 250
-latent_space_frequency = 500
-model_save_frequency = 25000
-dataset_generation_frequency = 25000
+vae_lr = 0.005
+critic_lr = 0.005
+img_frequency = 10000
+loss_frequency = 5000
+latent_space_frequency = 25000
+model_save_frequency = 100000
+dataset_generation_frequency = 100000
 dataset_generation_size = 50000
 gradient_penality_weight = 10
+gamma = 0.5
+
+lr_decay_factor = 0.5
+lr_decay_steps = 200000
 
 run_dir, img_dir, model_dir, generated_datesets_dir = utils.generate_run_dir()
 
@@ -51,7 +55,10 @@ config = {
         'run_dir': run_dir,
         'img_dir': img_dir,
         'model_dir': model_dir,
-        'generated_datesets_dir': generated_datesets_dir
+        'generated_datesets_dir': generated_datesets_dir,
+        'gamma': gamma,
+        'lr_decay_factor': lr_decay_factor,
+        'lr_decay_steps': lr_decay_steps
     }
 
 
