@@ -14,23 +14,28 @@ def build_generator(latent_dim, timesteps):
     generated = generator_inputs
 
     generated = Dense(15)(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.expand_dims(x))(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(1, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
@@ -42,7 +47,7 @@ def build_generator(latent_dim, timesteps):
 
 
 def build_critic(timesteps, use_mbd, use_packing, packing_degree):
-    kernel_initializer = keras.initializers.RandomNormal(1, 0.02)
+    kernel_initializer = keras.initializers.RandomNormal(0, 0.02)
 
     if use_packing:
         critic_inputs = Input((timesteps, packing_degree + 1))

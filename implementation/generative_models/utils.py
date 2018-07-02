@@ -63,14 +63,14 @@ def save_losses(losses, filename):
     plt.close()
 
 
-def save_losses_vae(losses, filename):
+def save_losses_other(losses, filename, text):
     plt.subplots(2, 1, figsize=(15, 9))
     plt.subplot(2, 1, 1)
     plt.plot(losses)
-    plt.legend(['vae'])
+    plt.legend([text])
     plt.subplot(2, 1, 2)
     plt.plot(losses[-1000:])
-    plt.legend(['vae'])
+    plt.legend([text])
     plt.savefig(filename)
     plt.clf()
     plt.close()

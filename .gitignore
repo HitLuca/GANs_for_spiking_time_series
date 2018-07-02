@@ -189,5 +189,7 @@ implementation/generative_models/wgan/outputs/
 implementation/generative_models/gan/outputs/
 implementation/generative_models/wgan_gp/outputs/
 implementation/generative_models/vae/outputs/
+implementation/generative_models/ae/outputs/
 implementation/generative_models/wgan_gp_vae/outputs/
 
+implementation/comparison_metrics/*.json

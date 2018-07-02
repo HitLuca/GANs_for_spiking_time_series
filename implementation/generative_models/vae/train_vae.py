@@ -4,24 +4,26 @@ from vae import VAE
 sys.path.append("..")
 import utils
 
-# normalized_transactions_filepath = "../../../datasets/berka_dataset/usable/normalized_transactions_months.npy"
-# timesteps = 90
-# dataset = utils.load_splitted_dataset(normalized_transactions_filepath, timesteps)
+normalized_transactions_filepath = "../../../datasets/berka_dataset/usable/normalized_transactions_months.npy"
+timesteps = 90
+dataset = utils.load_splitted_dataset(normalized_transactions_filepath, timesteps)
 
-timesteps = 100
-dataset = utils.load_resized_mnist()
+# timesteps = 100
+# dataset = utils.load_resized_mnist()
 
 batch_size = 64
-epochs = 300000
+epochs = 1000000
 latent_dim = 2
-lr = 0.0001
-img_frequency = 1000
-loss_frequency = 1000
-latent_space_frequency = 2500
+lr = 0.001
+img_frequency = 2500
+loss_frequency = 2500
+latent_space_frequency = 5000
 model_save_frequency = 3000
 dataset_generation_frequency = 25000
 dataset_generation_size = 100000
 
+lr_decay_factor = 0.5
+lr_decay_steps = 200000
 
 run_dir, img_dir, model_dir, generated_datesets_dir = utils.generate_run_dir()
 
@@ -40,7 +42,9 @@ config = {
         'run_dir': run_dir,
         'img_dir': img_dir,
         'model_dir': model_dir,
-        'generated_datesets_dir': generated_datesets_dir
+        'generated_datesets_dir': generated_datesets_dir,
+        'lr_decay_factor': lr_decay_factor,
+        'lr_decay_steps': lr_decay_steps
     }
 
 

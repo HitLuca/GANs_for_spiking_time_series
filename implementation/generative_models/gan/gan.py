@@ -1,9 +1,8 @@
 from implementation.generative_models import utils
-from keras import Model
 from keras.layers import *
-from keras.optimizers import *
 import sys
 import pickle
+import os
 
 sys.path.append("..")
 import utils
@@ -15,7 +14,7 @@ class GAN:
         self._batch_size = config['batch_size']
         self._epochs = config['epochs']
         self._timesteps = config['timesteps']
-        self._n_critic = config['n_critic']
+        self._n_discriminator = config['n_discriminator']
         self._n_generator = config['n_generator']
         self._latent_dim = config['latent_dim']
 
@@ -35,6 +34,9 @@ class GAN:
         self._use_mbd = config['use_mbd']
         self._use_packing = config['use_packing']
 
+        self._lr_decay_factor = config['lr_decay_factor']
+        self._lr_decay_steps = config['lr_decay_steps']
+
         self._epoch = 0
         self._losses = [[], []]
         self._build_models()
@@ -47,7 +49,7 @@ class GAN:
                                                                 self._timesteps, self._use_packing,
                                                                 self._packing_degree, self._batch_size,
                                                                 self._generator_lr)
-        self._critic_model = gan_utils.build_discriminator_model(self._generator, self._discriminator, self._latent_dim,
+        self._discriminator_model = gan_utils.build_discriminator_model(self._generator, self._discriminator, self._latent_dim,
                                                                  self._timesteps, self._use_packing,
                                                                  self._packing_degree,
                                                                  self._batch_size,
@@ -60,20 +62,20 @@ class GAN:
         while self._epoch < self._epochs:
             self._epoch += 1
             discriminator_losses = []
-            for _ in range(self._n_critic):
+            for _ in range(self._n_discriminator):
                 indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
                 batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
                 inputs = [batch_transactions, noise]
 
                 if self._use_packing:
-                    supporting_indexes = np.random.randint(0, dataset.shape[0],(self._batch_size * self._packing_degree))
+                    supporting_indexes = np.random.randint(0, dataset.shape[0], (self._batch_size * self._packing_degree))
                     supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
                                                                                   self._packing_degree)
-                    supporting_noise = np.random.normal(0, 1,(self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.extend([supporting_transactions, supporting_noise])
 
-                discriminator_losses.append(self._critic_model.train_on_batch(inputs, [ones, zeros]))
+                discriminator_losses.append(self._discriminator_model.train_on_batch(inputs, [ones, zeros]))
             discriminator_loss = np.mean(discriminator_losses)
 
             generator_losses = []
@@ -82,7 +84,7 @@ class GAN:
                 inputs = [noise]
 
                 if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1,(self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.append(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
@@ -148,10 +150,12 @@ class GAN:
             pickle.dump(self._losses, f)
 
     def _save_models(self):
-        # self._generator_model.save(self._model_dir + '/generator_model.h5')
-        # self._critic_model.save(self._model_dir + '/critic_model.h5')
-        self._generator.save(self._model_dir + '/generator.h5')
-        # self._critic.save(self._model_dir + '/critic.h5')
+        dir = self._model_dir + '/' + str(self._epoch) + '/'
+        os.mkdir(dir)
+        self._generator_model.save(dir + '/generator.h5')
+        self._discriminator.save(dir + '/discriminator.h5')
+        self._generator_model.save(dir + '/generator_model.h5')
+        self._discriminator_model.save(dir + '/discriminator_model.h5')
 
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))
@@ -160,4 +164,13 @@ class GAN:
         np.save(self._generated_datesets_dir + '/last', generated_dataset)
 
     def get_models(self):
-        return self._generator, self._discriminator, self._generator_model, self._critic_model
+        return self._generator, self._discriminator, self._generator_model, self._discriminator_model
+
+    def _apply_lr_decay(self):
+        lr_tensor = self._generator_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)
+
+        lr_tensor = self._discriminator_model.optimizer.lr
+        lr = K.get_value(lr_tensor)
+        K.set_value(lr_tensor, lr * self._lr_decay_factor)

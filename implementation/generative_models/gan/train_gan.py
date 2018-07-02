@@ -15,21 +15,24 @@ dataset = utils.load_resized_mnist()
 np.random.shuffle(dataset)
 
 batch_size = 64
-epochs = 5000000
-n_critic = 5
+epochs = 1000000
+n_discriminator = 1
 n_generator = 1
-latent_dim = 15
-generator_lr = 0.00005
-critic_lr = 0.00005
-img_frequency = 125
+latent_dim = 2
+generator_lr = 0.00002
+critic_lr = 0.00002
+img_frequency = 250
 loss_frequency = 500
 latent_space_frequency = 1000
 model_save_frequency = 25000
 dataset_generation_frequency = 25000
-dataset_generation_size = 100000
+dataset_generation_size = 50000
 use_mbd = False
 use_packing = False
 packing_degree = 2
+
+lr_decay_factor = 0.5
+lr_decay_steps = 200000
 
 assert (use_mbd and use_packing) is not True
 assert (use_packing and packing_degree > 0) or not use_packing
@@ -40,7 +43,7 @@ config = {
         'batch_size': batch_size,
         'epochs': epochs,
         'timesteps': timesteps,
-        'n_critic': n_critic,
+        'n_discriminator': n_discriminator,
         'n_generator': n_generator,
         'latent_dim': latent_dim,
         'generator_lr': generator_lr,
@@ -57,7 +60,9 @@ config = {
         'run_dir': run_dir,
         'img_dir': img_dir,
         'model_dir': model_dir,
-        'generated_datesets_dir': generated_datesets_dir
+        'generated_datesets_dir': generated_datesets_dir,
+        'lr_decay_factor': lr_decay_factor,
+        'lr_decay_steps': lr_decay_steps
     }
 
 

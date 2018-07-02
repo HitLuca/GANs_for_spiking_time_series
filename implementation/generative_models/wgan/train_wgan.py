@@ -7,11 +7,9 @@ from keras.callbacks import *
 # normalized_transactions_filepath = "../../../datasets/berka_dataset/usable/normalized_transactions_months.npy"
 # timesteps = 90
 # dataset = utils.load_splitted_dataset(normalized_transactions_filepath, timesteps)
-# using_images = False
 
 timesteps = 100
 dataset = utils.load_resized_mnist()
-using_images = True
 
 np.random.shuffle(dataset)
 
