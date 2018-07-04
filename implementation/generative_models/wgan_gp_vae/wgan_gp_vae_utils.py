@@ -97,10 +97,9 @@ def build_critic(timesteps):
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
     criticized = Conv1D(32, 3, padding='same')(criticized)
-    criticized = LeakyReLU(0.2)(criticized)
+    criticized = Activation('tanh')(criticized)
 
     criticized = Flatten()(criticized)
-
     critic_hidden = Model(critic_inputs, criticized, 'critic_hidden')
 
     criticized = Dense(50)(criticized)
@@ -110,7 +109,6 @@ def build_critic(timesteps):
     criticized = Dense(1)(criticized)
 
     critic = Model(critic_inputs, criticized, 'critic')
-
     return critic, critic_hidden
 
 
@@ -118,6 +116,7 @@ def build_vae_model(encoder, decoder_generator, critic_hidden, critic, latent_di
     utils.set_model_trainable(encoder, True)
     utils.set_model_trainable(decoder_generator, True)
     utils.set_model_trainable(critic_hidden, False)
+    utils.set_model_trainable(critic, False)
 
     real_samples = Input((timesteps,))
     noise_samples = Input((latent_dim,))
@@ -133,19 +132,21 @@ def build_vae_model(encoder, decoder_generator, critic_hidden, critic, latent_di
     real_criticized = critic_hidden(real_samples)
     decoded_criticized = critic_hidden(decoded_inputs)
 
-    generator_vae_model = Model([real_samples, noise_samples], [generated_criticized])
-    generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9), loss=custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma))
+    generator_vae_model = Model([real_samples, noise_samples], generated_criticized)
+    generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9),
+                                loss=custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma, timesteps))
 
     generator_model = Model(noise_samples, generated_samples)
     return generator_vae_model, generator_model
 
 
-def custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma):
+def custom_loss(z_mean, z_log_var, real_criticized, decoded_criticized, gamma, timesteps):
     def loss(y_true, y_pred):
         gan_loss = utils.wasserstein_loss(y_true, y_pred)
-        xent_loss = mean_squared_error(real_criticized, decoded_criticized)
-        kl_loss = - 0.5 * K.mean(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=1)
-        vae_loss = xent_loss + kl_loss
+        mse_loss = mean_squared_error(real_criticized, decoded_criticized)
+        mse_loss *= timesteps
+        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
+        vae_loss = K.mean(mse_loss + kl_loss)
         return gamma * gan_loss + (1 - gamma) * vae_loss
     return loss
 
@@ -159,7 +160,6 @@ def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps
     real_samples = Input((timesteps,))
 
     generated_samples = decoder_generator(noise_samples)
-
     generated_criticized = critic(generated_samples)
     real_criticized = critic(real_samples)
 
@@ -204,4 +204,4 @@ def sampling(args):
     batch_size = K.shape(z_mean)[0]
     latent_dim = K.int_shape(z_mean)[1]
     epsilon = K.random_normal(shape=(batch_size, latent_dim))
-    return z_mean + K.exp(z_log_var) * epsilon
+    return z_mean + K.exp(0.5 * z_log_var) * epsilon
