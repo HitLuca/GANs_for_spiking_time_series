@@ -193,3 +193,4 @@ implementation/generative_models/ae/outputs/
 implementation/generative_models/wgan_gp_vae/outputs/
 
 implementation/comparison_metrics/*/
+backup_datasets/

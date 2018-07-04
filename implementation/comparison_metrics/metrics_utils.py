@@ -2,6 +2,8 @@ import json
 
 import numpy as np
 from matplotlib import pyplot as plt
+import seaborn as sns
+sns.set()
 
 
 def combine_data(real_data, fake_data, split):

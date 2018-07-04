@@ -1,7 +1,6 @@
 from evaluator import Evaluator
 import sys
 sys.path.append("..")
-from generative_models import utils
 import os
 
 timesteps = 90
