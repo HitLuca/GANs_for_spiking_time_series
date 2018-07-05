@@ -48,50 +48,36 @@ def save_samples(generated_data, rows, columns, filenames):
     plt.close()
 
 
-def save_losses(losses, filename):
-    plt.subplots(2, 1, figsize=(15, 9))
-    plt.subplot(2, 1, 1)
+def save_losses_wgan(losses, filename, legend_name='critic'):
+    plt.figure(figsize=(15, 4.5))
     plt.plot(losses[0])
     plt.plot(losses[1])
-    plt.legend(['generator', 'critic'])
-    plt.subplot(2, 1, 2)
-    plt.plot(losses[0][-1000:])
-    plt.plot(losses[1][-1000:])
-    plt.legend(['generator', 'critic'])
+    plt.legend(['generator', legend_name])
     plt.savefig(filename)
     plt.clf()
     plt.close()
 
 
 def save_losses_other(losses, filename, text):
-    plt.subplots(2, 1, figsize=(15, 9))
-    plt.subplot(2, 1, 1)
+    plt.figure(figsize=(15, 4.5))
     plt.plot(losses)
-    plt.legend([text])
-    plt.subplot(2, 1, 2)
-    plt.plot(losses[-1000:])
     plt.legend([text])
     plt.savefig(filename)
     plt.clf()
     plt.close()
 
 
-def save_losses_wgan_gp_vae(losses, filename):
-    plt.subplots(4, 1, figsize=(15, 18))
-    plt.subplot(4, 1, 1)
+def save_losses_wgan_gp_ae(losses, filename, legend_name='generator AE'):
+    plt.subplots(2, 1, figsize=(15, 9))
+    plt.subplot(2, 1, 1)
     plt.plot(losses[0])
     plt.plot(losses[1])
     plt.legend(['generator', 'critic'])
-    plt.subplot(4, 1, 2)
-    plt.plot(losses[0][-1000:])
-    plt.plot(losses[1][-1000:])
-    plt.legend(['generator', 'critic'])
-    plt.subplot(4, 1, 3)
+
+    plt.subplot(2, 1, 2)
     plt.plot(losses[2])
-    plt.legend(['vae'])
-    plt.subplot(4, 1, 4)
-    plt.plot(losses[2][-1000:])
-    plt.legend(['vae'])
+    plt.legend([legend_name])
+
     plt.savefig(filename)
     plt.clf()
     plt.close()

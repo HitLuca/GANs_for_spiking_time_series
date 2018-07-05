@@ -47,7 +47,7 @@ class VAE:
             vae_loss = self._vae_model.train_on_batch(batch_transactions, batch_transactions)
             self._losses.append(vae_loss)
 
-            print("%d [VAE loss: %f]" % (self._epoch, vae_loss))
+            print("%d [VAE loss: %+.6f]" % (self._epoch, vae_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
@@ -96,7 +96,7 @@ class VAE:
         utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
-        utils.save_losses_other(self._losses, self._img_dir + '/losses.png', 'vae')
+        utils.save_losses_other(self._losses, self._img_dir + '/losses.png', 'vae loss')
 
         with open(self._run_dir + '/losses.p', 'wb') as f:
             pickle.dump(self._losses, f)

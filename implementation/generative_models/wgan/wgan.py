@@ -76,8 +76,7 @@ class WGAN:
                                                         (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.extend([supporting_transactions, supporting_noise])
 
-                critic_loss = self._critic_model.train_on_batch(inputs, [ones, neg_ones])[0]
-                critic_losses.append(critic_loss)
+                critic_losses.append(self._critic_model.train_on_batch(inputs, [ones, neg_ones])[0])
 
                 wgan_utils.clip_weights(self._critic, self._clip_value)
             critic_loss = np.mean(critic_losses)
@@ -102,7 +101,7 @@ class WGAN:
             self._losses[0].append(generator_loss)
             self._losses[1].append(critic_loss)
 
-            print("%d [C loss: %f] [G loss: %f]" % (self._epoch, critic_loss, generator_loss))
+            print("%d [C loss: %+.6f] [G loss: %+.6f]" % (self._epoch, critic_loss, generator_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
@@ -150,7 +149,7 @@ class WGAN:
         utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
-        utils.save_losses(self._losses, self._img_dir + '/losses.png')
+        utils.save_losses_wgan(self._losses, self._img_dir + '/losses.png')
 
         with open(self._run_dir + '/losses.p', 'wb') as f:
             pickle.dump(self._losses, f)
@@ -169,9 +168,10 @@ class WGAN:
             pickle.dump(config, f)
 
     def _save_models(self):
-        # self._gan.save(self._model_dir / 'wgan.h5')
         self._generator.save(self._model_dir + '/generator.h5')
-        # self._critic.save(self._model_dir / 'critic.h5')
+        self._generator_model.save(self._model_dir + '/generator_model.h5')
+        self._critic_model.save(self._model_dir + '/critic_model.h5')
+        self._critic.save(self._model_dir + '/critic.h5')
 
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))

@@ -191,6 +191,8 @@ implementation/generative_models/wgan_gp/outputs/
 implementation/generative_models/vae/outputs/
 implementation/generative_models/ae/outputs/
 implementation/generative_models/wgan_gp_vae/outputs/
+implementation/generative_models/wgan_gp_ae/outputs/
+implementation/generative_models/old/
 
 implementation/comparison_metrics/*/
 backup_datasets/

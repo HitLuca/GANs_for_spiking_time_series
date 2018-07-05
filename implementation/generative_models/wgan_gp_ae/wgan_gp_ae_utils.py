@@ -36,10 +36,9 @@ def build_encoder(latent_dim, timesteps):
 
     encoded = Flatten()(encoded)
 
-    z_mean = Dense(latent_dim)(encoded)
-    z_log_var = Dense(latent_dim)(encoded)
+    encoded = Dense(latent_dim)(encoded)
 
-    encoder = Model(encoder_inputs, [z_mean, z_log_var])
+    encoder = Model(encoder_inputs, encoded)
     return encoder
 
 
@@ -111,7 +110,7 @@ def build_critic(timesteps):
     return critic
 
 
-def build_vae_model(encoder, decoder_generator, critic, latent_dim, timesteps, gamma, vae_lr):
+def build_ae_model(encoder, decoder_generator, critic, latent_dim, timesteps, gamma, vae_lr):
     utils.set_model_trainable(encoder, True)
     utils.set_model_trainable(decoder_generator, True)
     utils.set_model_trainable(critic, False)
@@ -122,36 +121,28 @@ def build_vae_model(encoder, decoder_generator, critic, latent_dim, timesteps, g
     generated_samples = decoder_generator(noise_samples)
     generated_criticized, _ = critic(generated_samples)
 
-    z_mean, z_log_var = encoder(real_samples)
-
-    sampled_z = Lambda(sampling)([z_mean, z_log_var])
-    decoded_inputs = decoder_generator(sampled_z)
+    encoded_samples = encoder(real_samples)
+    decoded_samples = decoder_generator(encoded_samples)
 
     _, real_criticized = critic(real_samples)
-    _, decoded_criticized = critic(decoded_inputs)
+    _, decoded_criticized = critic(decoded_samples)
 
-    vae_model = Model([real_samples, noise_samples], [generated_criticized, generated_criticized])
-    vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9),
-                      loss=[utils.wasserstein_loss,
-                            vae_loss(z_mean, z_log_var, real_criticized, decoded_criticized, timesteps)],
-                      loss_weights=[gamma, (1 - gamma)])
+    generator_vae_model = Model([real_samples, noise_samples], [generated_criticized, generated_criticized])
+    generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9),
+                                loss=[utils.wasserstein_loss, ae_loss(real_criticized, decoded_criticized, timesteps)],
+                                loss_weights=[gamma, (1-gamma)])
 
     generator_model = Model(noise_samples, generated_samples)
-    return vae_model, generator_model
+    return generator_vae_model, generator_model
 
 
-def vae_loss(z_mean, z_log_var, real_criticized, decoded_criticized, timesteps):
+def ae_loss(real_criticized, decoded_criticized, timesteps):
     def loss(y_true, y_pred):
-        mse_loss = mean_squared_error(real_criticized, decoded_criticized)
-        mse_loss *= timesteps
-        kl_loss = - 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
-        return K.mean(mse_loss + kl_loss)
-
+        return timesteps * mean_squared_error(real_criticized, decoded_criticized)
     return loss
 
 
-def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps, batch_size, critic_lr,
-                       gradient_penality_weight):
+def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps, batch_size, critic_lr, gradient_penality_weight):
     utils.set_model_trainable(encoder, False)
     utils.set_model_trainable(decoder_generator, False)
     utils.set_model_trainable(critic, True)
@@ -176,7 +167,7 @@ def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps
 
     critic_model.compile(optimizer=Adam(critic_lr, beta_1=0, beta_2=0.9),
                          loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss],
-                         loss_weights=[1 / 3, 1 / 3, 1 / 3])
+                         loss_weights=[1/3, 1/3, 1/3])
     return critic_model
 
 
@@ -198,11 +189,3 @@ class RandomWeightedAverage(_Merge):
         weights = K.random_uniform((self._batch_size, 1))
         averaged_inputs = (weights * inputs[0]) + ((1 - weights) * inputs[1])
         return averaged_inputs
-
-
-def sampling(args):
-    z_mean, z_log_var = args
-    batch_size = K.shape(z_mean)[0]
-    latent_dim = K.int_shape(z_mean)[1]
-    epsilon = K.random_normal(shape=(batch_size, latent_dim))
-    return z_mean + K.exp(0.5 * z_log_var) * epsilon

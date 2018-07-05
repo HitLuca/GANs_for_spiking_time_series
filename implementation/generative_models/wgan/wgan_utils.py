@@ -152,7 +152,8 @@ def build_critic_model(generator, critic, critic_lr, latent_dim, batch_size, tim
 
         critic_model = Model([real_samples, noise_samples, supporting_real_samples, supporting_noise_samples],
                              [real_criticized, generated_criticized], 'critic_model')
-        critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr))
+        critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr),
+                             loss_weights=[1/2, 1/2])
     else:
         generated_samples = generator(noise_samples)
         generated_criticized = critic(generated_samples)
@@ -160,7 +161,8 @@ def build_critic_model(generator, critic, critic_lr, latent_dim, batch_size, tim
 
         critic_model = Model([real_samples, noise_samples],
                              [real_criticized, generated_criticized], 'critic_model')
-        critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr))
+        critic_model.compile(loss=[utils.wasserstein_loss, utils.wasserstein_loss], optimizer=RMSprop(critic_lr),
+                             loss_weights=[1 / 2, 1 / 2])
     return critic_model
 
 

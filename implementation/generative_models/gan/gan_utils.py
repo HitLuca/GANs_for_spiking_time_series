@@ -1,6 +1,6 @@
 from keras import Model
 from keras.layers import *
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 import sys
 sys.path.append("..")
 import utils
@@ -9,34 +9,30 @@ import utils
 def build_generator(latent_dim, timesteps):
     generator_inputs = Input((latent_dim,))
 
-    generated = generator_inputs
+    generated = Lambda(lambda x: K.expand_dims(x))(generator_inputs)
 
-    generated = Dense(50, activation='relu')(generated)
+    generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
+    generated = LeakyReLU(0.2)(generated)
+    generated = UpSampling1D(2)(generated)
+
+    generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
+    generated = LeakyReLU(0.2)(generated)
+    generated = UpSampling1D(2)(generated)
+
+    generated = Conv1D(32, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
+    generated = LeakyReLU(0.2)(generated)
+    generated = UpSampling1D(2)(generated)
+
+    generated = Conv1D(1, 3, padding='same')(generated)
+    generated = utils.BatchNormalizationGAN()(generated)
+    generated = LeakyReLU(0.2)(generated)
+
+    generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
+
     generated = Dense(timesteps, activation='tanh')(generated)
-    # generated = Lambda(lambda x: K.expand_dims(x))(generator_inputs)
-
-    # generated = Conv1D(32, 3, padding='same')(generated)
-    # # generated = utils.BatchNormalizationGAN()(generated)
-    # generated = LeakyReLU(0.2)(generated)
-    # generated = UpSampling1D(2)(generated)
-    #
-    # generated = Conv1D(32, 3, padding='same')(generated)
-    # # generated = utils.BatchNormalizationGAN()(generated)
-    # generated = LeakyReLU(0.2)(generated)
-    # generated = UpSampling1D(2)(generated)
-    #
-    # generated = Conv1D(32, 3, padding='same')(generated)
-    # # generated = utils.BatchNormalizationGAN()(generated)
-    # generated = LeakyReLU(0.2)(generated)
-    # generated = UpSampling1D(2)(generated)
-    #
-    # generated = Conv1D(1, 3, padding='same')(generated)
-    # # generated = utils.BatchNormalizationGAN()(generated)
-    # generated = LeakyReLU(0.2)(generated)
-    #
-    # generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
-    #
-    # generated = Dense(timesteps, activation='tanh')(generated)
 
     generator = Model(generator_inputs, generated, 'generator')
     return generator
@@ -48,36 +44,32 @@ def build_discriminator(timesteps, use_mbd, use_packing, packing_degree):
         discriminated = discriminator_inputs
     else:
         discriminator_inputs = Input((timesteps,))
+        discriminated = Lambda(lambda x: K.expand_dims(x, -1))(discriminator_inputs)
 
-    discriminated = discriminator_inputs
-    discriminated = Dense(50, activation='relu')(discriminated)
+    discriminated = Conv1D(32, 3, padding='same')(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
+    discriminated = MaxPooling1D(2, padding='same')(discriminated)
+
+    discriminated = Conv1D(32, 3, padding='same')(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
+    discriminated = MaxPooling1D(2, padding='same')(discriminated)
+
+    discriminated = Conv1D(32, 3, padding='same')(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
+    discriminated = MaxPooling1D(2, padding='same')(discriminated)
+
+    discriminated = Conv1D(32, 3, padding='same')(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
+
+    discriminated = Flatten()(discriminated)
+    if use_mbd:
+        discriminated = utils.MinibatchDiscrimination(15, 3)(discriminated)
+
+    discriminated = Dense(50)(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
+    discriminated = Dense(15)(discriminated)
+    discriminated = LeakyReLU(0.2)(discriminated)
     discriminated = Dense(1, activation='sigmoid')(discriminated)
-    #     discriminated = Lambda(lambda x: K.expand_dims(x, -1))(discriminator_inputs)
-    #
-    # discriminated = Conv1D(32, 3, padding='same')(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    # discriminated = MaxPooling1D(2, padding='same')(discriminated)
-    #
-    # discriminated = Conv1D(32, 3, padding='same')(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    # discriminated = MaxPooling1D(2, padding='same')(discriminated)
-    #
-    # discriminated = Conv1D(32, 3, padding='same')(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    # discriminated = MaxPooling1D(2, padding='same')(discriminated)
-    #
-    # discriminated = Conv1D(32, 3, padding='same')(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    #
-    # discriminated = Flatten()(discriminated)
-    # if use_mbd:
-    #     discriminated = utils.MinibatchDiscrimination(15, 3)(discriminated)
-    #
-    # discriminated = Dense(50)(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    # discriminated = Dense(15)(discriminated)
-    # discriminated = LeakyReLU(0.2)(discriminated)
-    # discriminated = Dense(1, activation='sigmoid')(discriminated)
 
     discriminator = Model(discriminator_inputs, discriminated, 'discriminator')
 
@@ -151,7 +143,8 @@ def build_discriminator_model(generator, discriminator, latent_dim, timesteps, u
 
         discriminator_model = Model([real_samples, noise_samples, supporting_real_samples, supporting_noise_samples],
                              [real_discriminated, generated_discriminated], 'discriminator_model')
-        discriminator_model.compile(optimizer=Adam(discriminator_lr), loss=['binary_crossentropy', 'binary_crossentropy'])
+        discriminator_model.compile(optimizer=RMSprop(discriminator_lr), loss=['binary_crossentropy', 'binary_crossentropy'],
+                                    loss_weights=[1/2, 1/2])
     else:
         generated_samples = generator(noise_samples)
         generated_discriminated = discriminator(generated_samples)
@@ -159,5 +152,6 @@ def build_discriminator_model(generator, discriminator, latent_dim, timesteps, u
 
         discriminator_model = Model([real_samples, noise_samples],
                              [real_discriminated, generated_discriminated], 'discriminator_model')
-        discriminator_model.compile(optimizer=Adam(discriminator_lr), loss=['binary_crossentropy', 'binary_crossentropy'])
+        discriminator_model.compile(optimizer=RMSprop(discriminator_lr), loss=['binary_crossentropy', 'binary_crossentropy'],
+                                    loss_weights=[1/2, 1/2])
     return discriminator_model

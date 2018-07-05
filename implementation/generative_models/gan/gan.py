@@ -75,7 +75,7 @@ class GAN:
                     supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.extend([supporting_transactions, supporting_noise])
 
-                discriminator_losses.append(self._discriminator_model.train_on_batch(inputs, [ones, zeros]))
+                discriminator_losses.append(self._discriminator_model.train_on_batch(inputs, [ones, zeros])[0])
             discriminator_loss = np.mean(discriminator_losses)
 
             generator_losses = []
@@ -96,7 +96,7 @@ class GAN:
             self._losses[0].append(generator_loss)
             self._losses[1].append(discriminator_loss)
 
-            print("%d [D loss: %f] [G loss: %f]" % (self._epoch, discriminator_loss, generator_loss))
+            print("%d [D loss: %+.6f] [G loss: %+.6f]" % (self._epoch, discriminator_loss, generator_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
@@ -144,7 +144,7 @@ class GAN:
         utils.save_latent_space(generated_data, grid_size, filenames)
 
     def _save_losses(self):
-        utils.save_losses(self._losses, self._img_dir + '/losses.png')
+        utils.save_losses_wgan(self._losses, self._img_dir + '/losses.png', legend_name='discriminator')
 
         with open(self._run_dir + '/losses.p', 'wb') as f:
             pickle.dump(self._losses, f)

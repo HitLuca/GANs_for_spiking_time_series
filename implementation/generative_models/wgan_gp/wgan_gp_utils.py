@@ -180,7 +180,8 @@ def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, pa
                              [real_criticized, generated_criticized, averaged_criticized], 'critic_model')
 
         critic_model.compile(optimizer=Adam(critic_lr, beta_1=0, beta_2=0.9),
-                             loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss])
+                             loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss],
+                             loss_weights=[1 / 3, 1 / 3, 1 / 3])
     else:
         generated_samples = generator(noise_samples)
         generated_criticized = critic(generated_samples)
@@ -198,7 +199,8 @@ def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, pa
                              [real_criticized, generated_criticized, averaged_criticized], 'critic_model')
 
         critic_model.compile(optimizer=Adam(critic_lr, beta_1=0, beta_2=0.9),
-                             loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss])
+                             loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss],
+                             loss_weights=[1/3, 1/3, 1/3])
     return critic_model
 
 

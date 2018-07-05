@@ -56,7 +56,7 @@ class AE:
 
             self._losses.append(ae_loss)
 
-            print("%d [AE loss: %f]" % (self._epoch, ae_loss))
+            print("%d [AE loss: %+.6f]" % (self._epoch, ae_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()
