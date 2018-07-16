@@ -15,28 +15,28 @@ def build_generator(latent_dim, timesteps):
     generated = generator_inputs
 
     generated = Dense(15)(generated)
-    generated = utils.BatchNormalizationGAN()(generated)
+    generated = utils.BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.expand_dims(x))(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
-    generated = utils.BatchNormalizationGAN()(generated)
+    generated = utils.BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
-    generated = utils.BatchNormalizationGAN()(generated)
+    generated = utils.BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(32, 3, padding='same')(generated)
-    generated = utils.BatchNormalizationGAN()(generated)
+    generated = utils.BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
     generated = UpSampling1D(2)(generated)
 
     generated = Conv1D(1, 3, padding='same')(generated)
-    generated = utils.BatchNormalizationGAN()(generated)
+    generated = utils.BatchNormalization()(generated)
     generated = LeakyReLU(0.2)(generated)
 
     generated = Lambda(lambda x: K.squeeze(x, -1))(generated)
@@ -200,7 +200,7 @@ def build_critic_model(generator, critic, latent_dim, timesteps, use_packing, pa
 
         critic_model.compile(optimizer=Adam(critic_lr, beta_1=0, beta_2=0.9),
                              loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss],
-                             loss_weights=[1/3, 1/3, 1/3])
+                             loss_weights=[1 / 3, 1 / 3, 1 / 3])
     return critic_model
 
 

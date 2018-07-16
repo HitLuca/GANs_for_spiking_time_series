@@ -16,22 +16,22 @@ def build_encoder(latent_dim, timesteps):
     encoded = Lambda(lambda x: K.expand_dims(x, -1))(encoder_inputs)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = utils.BatchNormalizationGAN()(encoded)
+    encoded = utils.BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = utils.BatchNormalizationGAN()(encoded)
+    encoded = utils.BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = utils.BatchNormalizationGAN()(encoded)
+    encoded = utils.BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
     encoded = MaxPooling1D(2, padding='same')(encoded)
 
     encoded = Conv1D(32, 3, padding='same')(encoded)
-    encoded = utils.BatchNormalizationGAN()(encoded)
+    encoded = utils.BatchNormalization()(encoded)
     encoded = LeakyReLU(0.2)(encoded)
 
     encoded = Flatten()(encoded)
@@ -47,28 +47,28 @@ def build_decoder(latent_dim, timesteps):
     decoded = decoder_inputs
 
     decoded = Dense(15)(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.expand_dims(x))(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(32, 3, padding='same')(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
     decoded = UpSampling1D(2)(decoded)
 
     decoded = Conv1D(1, 3, padding='same')(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     decoded = Lambda(lambda x: K.squeeze(x, -1))(decoded)
@@ -96,17 +96,17 @@ def build_critic(timesteps):
     criticized = MaxPooling1D(2, padding='same')(criticized)
 
     criticized = Conv1D(32, 3, padding='same')(criticized)
-    criticized = Activation('tanh')(criticized)
+    criticized = LeakyReLU(0.2)(criticized)
 
-    criticized_hidden = Flatten()(criticized)
+    criticized = Flatten()(criticized)
 
-    criticized = Dense(50)(criticized_hidden)
+    criticized = Dense(50)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = Dense(15)(criticized)
     criticized = LeakyReLU(0.2)(criticized)
     criticized = Dense(1)(criticized)
 
-    critic = Model(critic_inputs, [criticized, criticized_hidden], 'critic')
+    critic = Model(critic_inputs, criticized, 'critic')
     return critic
 
 
@@ -119,30 +119,32 @@ def build_ae_model(encoder, decoder_generator, critic, latent_dim, timesteps, ga
     noise_samples = Input((latent_dim,))
 
     generated_samples = decoder_generator(noise_samples)
-    generated_criticized, _ = critic(generated_samples)
+    generated_criticized = critic(generated_samples)
 
     encoded_samples = encoder(real_samples)
     decoded_samples = decoder_generator(encoded_samples)
 
-    _, real_criticized = critic(real_samples)
-    _, decoded_criticized = critic(decoded_samples)
+    real_criticized = critic(real_samples)
+    decoded_criticized = critic(decoded_samples)
 
     generator_vae_model = Model([real_samples, noise_samples], [generated_criticized, generated_criticized])
     generator_vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0, beta_2=0.9),
-                                loss=[utils.wasserstein_loss, ae_loss(real_criticized, decoded_criticized, timesteps)],
-                                loss_weights=[gamma, (1-gamma)])
+                                loss=[utils.wasserstein_loss, ae_loss(real_criticized, decoded_criticized)],
+                                loss_weights=[gamma, (1 - gamma)])
 
     generator_model = Model(noise_samples, generated_samples)
     return generator_vae_model, generator_model
 
 
-def ae_loss(real_criticized, decoded_criticized, timesteps):
+def ae_loss(real_criticized, decoded_criticized):
     def loss(y_true, y_pred):
-        return timesteps * mean_squared_error(real_criticized, decoded_criticized)
+        return mean_squared_error(real_criticized, decoded_criticized)
+
     return loss
 
 
-def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps, batch_size, critic_lr, gradient_penality_weight):
+def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps, batch_size, critic_lr,
+                       gradient_penality_weight):
     utils.set_model_trainable(encoder, False)
     utils.set_model_trainable(decoder_generator, False)
     utils.set_model_trainable(critic, True)
@@ -151,11 +153,11 @@ def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps
     real_samples = Input((timesteps,))
 
     generated_samples = decoder_generator(noise_samples)
-    generated_criticized, _ = critic(generated_samples)
-    real_criticized, _ = critic(real_samples)
+    generated_criticized = critic(generated_samples)
+    real_criticized = critic(real_samples)
 
     averaged_samples = RandomWeightedAverage(batch_size)([real_samples, generated_samples])
-    averaged_criticized, _ = critic(averaged_samples)
+    averaged_criticized = critic(averaged_samples)
 
     partial_gp_loss = partial(gradient_penalty_loss,
                               averaged_samples=averaged_samples,
@@ -167,7 +169,7 @@ def build_critic_model(encoder, decoder_generator, critic, latent_dim, timesteps
 
     critic_model.compile(optimizer=Adam(critic_lr, beta_1=0, beta_2=0.9),
                          loss=[utils.wasserstein_loss, utils.wasserstein_loss, partial_gp_loss],
-                         loss_weights=[1/3, 1/3, 1/3])
+                         loss_weights=[1 / 3, 1 / 3, 1 / 3])
     return critic_model
 
 

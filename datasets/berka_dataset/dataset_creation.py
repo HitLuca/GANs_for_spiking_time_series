@@ -1,11 +1,10 @@
+import datetime
 import logging
-
-import pandas as pd
-import pickle
 import os
 from datetime import date
-import numpy as np
 
+import numpy as np
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('dataset_creation')
@@ -66,9 +65,34 @@ def generate_normalized_transactions(transactions):
 
     transactions_min = np.min(normalized_transactions)
     transactions_max = np.max(normalized_transactions)
-    normalized_transactions = 2 * ((normalized_transactions - transactions_min) / (transactions_max - transactions_min)) - 1
+    normalized_transactions = 2 * (
+    (normalized_transactions - transactions_min) / (transactions_max - transactions_min)) - 1
 
     return normalized_transactions
+
+
+def generate_normalized_transactions_months(transactions):
+    d0 = date(1993, 1, 1)
+    d1 = date(1998, 12, 31)
+    new_transactions = np.zeros((4500, 30 * 12 * 6))
+
+    current_date = d0
+    current_month = 1
+    row_index = 0
+
+    while (d1 - current_date).days >= 0:
+        if current_date.day <= 30:
+            transaction_index = current_date.day - 1
+            transaction_index += (current_date.month - 1) * 30
+            transaction_index += (current_date.year - 1993) * 360
+            new_transactions[:, transaction_index] = transactions[:, (current_date - d0).days]
+        if current_date.month != current_month:
+            row_index += 1
+            current_month += 1
+            if current_month == 13:
+                current_month = 1
+        current_date += datetime.timedelta(days=1)
+    return new_transactions
 
 
 def split_data(dataset, timesteps):
@@ -109,31 +133,8 @@ normalized_transactions = generate_normalized_transactions(transactions)
 np.save('usable/normalized_transactions.npy', normalized_transactions)
 logger.info('done')
 
-# transactions = np.load('usable/transactions.npy')
-# transactions.shape
-#
-# transactions = np.dstack([transactions, np.zeros((transactions.shape))])
-#
-# for i in range(transactions.shape[0]):
-#     past_balance = 0
-#     for j in range(transactions.shape[1]):
-#         if transactions[i, j, 0] != 0:
-#             past_balance += transactions[i, j, 0]
-#         transactions[i, j, 1] = past_balance
-#
-# transactions_min = np.min(transactions[:, :, 0])
-# transactions_max = np.max(transactions[:, :, 0])
-# transactions[:, :, 0] = 2 * ((transactions[:, :, 0] - transactions_min) / (transactions_max - transactions_min)) - 1
-#
-# transactions_min = np.min(transactions[:, :, 1])
-# transactions_max = np.max(transactions[:, :, 1])
-# transactions[:, :, 1] = 2 * ((transactions[:, :, 1] - transactions_min) / (transactions_max - transactions_min)) - 1
-#
-# np.save('usable/normalized_transactions_balances.npy', transactions)
-
-logger.info('generating splitted normalized transactions (100 timesteps, no flat transactions)')
-timesteps = 100
-normalized_transactions_100 = split_data(normalized_transactions, timesteps)
-normalized_transactions_100 = normalized_transactions_100[np.std(normalized_transactions_100, 1) > float(1e-7)]
-np.save('usable/normalized_transactions_100.npy', normalized_transactions_100)
+logger.info('generating normalized monthly transactions')
+normalized_transactions_months = generate_normalized_transactions_months(normalized_transactions)
+np.random.shuffle(normalized_transactions_months)
+np.save('usable/normalized_transactions_months.npy', normalized_transactions_months)
 logger.info('done')

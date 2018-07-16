@@ -15,13 +15,13 @@ def build_encoder(latent_dim, timesteps, encoder_type):
 
     if encoder_type == AE_type.dense.name:
         encoded = Dense(50)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = Dense(50)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = Dense(latent_dim)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
 
     elif encoder_type == AE_type.lstm.name:
@@ -29,7 +29,7 @@ def build_encoder(latent_dim, timesteps, encoder_type):
 
         encoded = LSTM(32, return_sequences=False)(encoded)
         encoded = Dense(latent_dim)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
 
     elif encoder_type == AE_type.blstm.name:
@@ -37,35 +37,33 @@ def build_encoder(latent_dim, timesteps, encoder_type):
 
         encoded = Bidirectional(LSTM(32, return_sequences=False))(encoded)
         encoded = Dense(latent_dim)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
 
     elif encoder_type == AE_type.cnn.name:
-        encoded = Lambda(lambda x: K.expand_dims(x, -1))(encoded)
+        encoded = Lambda(lambda x: K.expand_dims(x))(encoded)
 
         encoded = Conv1D(32, 3, padding='same')(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = MaxPooling1D(2, padding='same')(encoded)
 
         encoded = Conv1D(32, 3, padding='same')(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = MaxPooling1D(2, padding='same')(encoded)
 
         encoded = Conv1D(32, 3, padding='same')(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = MaxPooling1D(2, padding='same')(encoded)
 
         encoded = Conv1D(32, 3, padding='same')(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
+        encoded = utils.BatchNormalization()(encoded)
         encoded = LeakyReLU(0.2)(encoded)
 
         encoded = Flatten()(encoded)
         encoded = Dense(latent_dim)(encoded)
-        encoded = utils.BatchNormalizationGAN()(encoded)
-        encoded = LeakyReLU(0.2)(encoded)
 
     encoder = Model(encoder_inputs, encoded, 'encoder')
     return encoder
@@ -76,15 +74,15 @@ def build_decoder(latent_dim, timesteps, decoder_type):
     decoded = decoder_inputs
 
     decoded = Dense(15)(decoded)
-    decoded = utils.BatchNormalizationGAN()(decoded)
+    decoded = utils.BatchNormalization()(decoded)
     decoded = LeakyReLU(0.2)(decoded)
 
     if decoder_type == AE_type.dense.name:
         decoded = Dense(50)(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
         decoded = Dense(50)(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
         decoded = Dense(timesteps, activation='tanh')(decoded)
 
@@ -104,22 +102,22 @@ def build_decoder(latent_dim, timesteps, decoder_type):
         decoded = Lambda(lambda x: K.expand_dims(x))(decoded)
 
         decoded = Conv1D(32, 3, padding='same')(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
         decoded = UpSampling1D(2)(decoded)
 
         decoded = Conv1D(32, 3, padding='same')(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
         decoded = UpSampling1D(2)(decoded)
 
         decoded = Conv1D(32, 3, padding='same')(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
         decoded = UpSampling1D(2)(decoded)
 
         decoded = Conv1D(1, 3, padding='same')(decoded)
-        decoded = utils.BatchNormalizationGAN()(decoded)
+        decoded = utils.BatchNormalization()(decoded)
         decoded = LeakyReLU(0.2)(decoded)
 
         decoded = Lambda(lambda x: K.squeeze(x, -1))(decoded)

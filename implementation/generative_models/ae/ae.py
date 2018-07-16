@@ -1,7 +1,9 @@
-import sys
 import pickle
-import numpy as np
+import sys
+
 import keras.backend as K
+import numpy as np
+
 sys.path.append("..")
 import utils
 import ae_utils
@@ -17,7 +19,7 @@ class AE:
         self._timesteps = config['timesteps']
         self._latent_dim = config['latent_dim']
 
-        self._lr = config['lr']
+        self._lr = config['generator_lr']
         self._img_frequency = config['img_frequency']
         self._loss_frequency = config['loss_frequency']
         self._latent_space_frequency = config['latent_space_frequency']

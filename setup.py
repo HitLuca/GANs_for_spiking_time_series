@@ -1,7 +1,7 @@
-import urllib.request
 import logging
-import zipfile
 import os
+import urllib.request
+import zipfile
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('setup')

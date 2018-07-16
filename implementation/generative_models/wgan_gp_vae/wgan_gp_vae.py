@@ -1,7 +1,7 @@
+import os
 import pickle
 import sys
 
-import os
 from keras.layers import *
 
 sys.path.append("..")
@@ -15,9 +15,9 @@ class WGAN_GP_VAE:
         self._epochs = config['epochs']
         self._timesteps = config['timesteps']
         self._n_critic = config['n_critic']
-        self._n_generator_vae = config['n_generator_vae']
+        self._n_generator = config['n_generator']
         self._latent_dim = config['latent_dim']
-        self._vae_lr = config['vae_lr']
+        self._generator_lr = config['generator_lr']
         self._critic_lr = config['critic_lr']
         self._img_frequency = config['img_frequency']
         self._loss_frequency = config['loss_frequency']
@@ -50,7 +50,7 @@ class WGAN_GP_VAE:
                                                                              self._latent_dim,
                                                                              self._timesteps,
                                                                              self._gamma,
-                                                                             self._vae_lr)
+                                                                             self._generator_lr)
 
         self._critic_model = wgan_gp_vae_utils.build_critic_model(self._encoder, self._decoder_generator, self._critic,
                                                                   self._latent_dim,
@@ -76,7 +76,7 @@ class WGAN_GP_VAE:
 
             generator_losses = []
             vae_losses = []
-            for _ in range(self._n_generator_vae):
+            for _ in range(self._n_generator):
                 indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
                 batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
@@ -96,7 +96,8 @@ class WGAN_GP_VAE:
             self._losses[1].append(critic_loss)
             self._losses[2].append(vae_loss)
 
-            print("%d [C loss: %+.6f] [G loss: %+.6f] [VAE loss: %+.6f]" % (self._epoch, critic_loss, generator_loss, vae_loss))
+            print("%d [C loss: %+.6f] [G loss: %+.6f] [VAE loss: %+.6f]" % (
+            self._epoch, critic_loss, generator_loss, vae_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()

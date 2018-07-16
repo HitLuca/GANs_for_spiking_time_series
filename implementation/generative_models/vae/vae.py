@@ -13,7 +13,7 @@ class VAE:
         self._batch_size = config['batch_size']
         self._epochs = config['epochs']
         self._timesteps = config['timesteps']
-        self._lr = config['lr']
+        self._lr = config['generator_lr']
         self._latent_dim = config['latent_dim']
         self._img_frequency = config['img_frequency']
         self._loss_frequency = config['loss_frequency']
@@ -36,7 +36,8 @@ class VAE:
     def _build_models(self):
         self._encoder = vae_utils.build_encoder(self._latent_dim, self._timesteps)
         self._decoder = vae_utils.build_decoder(self._latent_dim, self._timesteps)
-        self._vae_model, self._generator = vae_utils.build_vae_model(self._encoder, self._decoder, self._latent_dim, self._timesteps, self._lr)
+        self._vae_model, self._generator = vae_utils.build_vae_model(self._encoder, self._decoder, self._latent_dim,
+                                                                     self._timesteps, self._lr)
 
     def train(self, dataset):
         while self._epoch < self._epochs:

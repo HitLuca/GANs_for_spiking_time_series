@@ -1,8 +1,10 @@
-from implementation.generative_models import utils
-from keras.layers import *
-import sys
-import pickle
 import os
+import pickle
+import sys
+
+from keras.layers import *
+
+from implementation.generative_models import utils
 
 sys.path.append("..")
 import utils
@@ -14,7 +16,7 @@ class GAN:
         self._batch_size = config['batch_size']
         self._epochs = config['epochs']
         self._timesteps = config['timesteps']
-        self._n_discriminator = config['n_discriminator']
+        self._n_discriminator = config['n_critic']
         self._n_generator = config['n_generator']
         self._latent_dim = config['latent_dim']
 
@@ -26,13 +28,10 @@ class GAN:
         self._model_save_frequency = config['model_save_frequency']
         self._dataset_generation_frequency = config['dataset_generation_frequency']
         self._dataset_generation_size = config['dataset_generation_size']
-        self._packing_degree = config['packing_degree']
         self._run_dir = config['run_dir']
         self._img_dir = config['img_dir']
         self._model_dir = config['model_dir']
         self._generated_datesets_dir = config['generated_datesets_dir']
-        self._use_mbd = config['use_mbd']
-        self._use_packing = config['use_packing']
 
         self._lr_decay_factor = config['lr_decay_factor']
         self._lr_decay_steps = config['lr_decay_steps']
@@ -43,17 +42,12 @@ class GAN:
 
     def _build_models(self):
         self._generator = gan_utils.build_generator(self._latent_dim, self._timesteps)
-        self._discriminator = gan_utils.build_discriminator(self._timesteps, self._use_mbd, self._use_packing,
-                                                            self._packing_degree)
+        self._discriminator = gan_utils.build_discriminator(self._timesteps)
         self._generator_model = gan_utils.build_generator_model(self._generator, self._discriminator, self._latent_dim,
-                                                                self._timesteps, self._use_packing,
-                                                                self._packing_degree, self._batch_size,
                                                                 self._generator_lr)
-        self._discriminator_model = gan_utils.build_discriminator_model(self._generator, self._discriminator, self._latent_dim,
-                                                                 self._timesteps, self._use_packing,
-                                                                 self._packing_degree,
-                                                                 self._batch_size,
-                                                                 self._critic_lr)
+        self._discriminator_model = gan_utils.build_discriminator_model(self._generator, self._discriminator,
+                                                                        self._latent_dim,
+                                                                        self._timesteps, self._critic_lr)
 
     def train(self, dataset):
         ones = np.ones((self._batch_size, 1))
@@ -68,13 +62,6 @@ class GAN:
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
                 inputs = [batch_transactions, noise]
 
-                if self._use_packing:
-                    supporting_indexes = np.random.randint(0, dataset.shape[0], (self._batch_size * self._packing_degree))
-                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
-                                                                                  self._packing_degree)
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
-                    inputs.extend([supporting_transactions, supporting_noise])
-
                 discriminator_losses.append(self._discriminator_model.train_on_batch(inputs, [ones, zeros])[0])
             discriminator_loss = np.mean(discriminator_losses)
 
@@ -82,10 +69,6 @@ class GAN:
             for _ in range(self._n_generator):
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
                 inputs = [noise]
-
-                if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
-                    inputs.append(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
             generator_loss = np.mean(generator_losses)

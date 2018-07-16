@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -8,6 +9,7 @@ from keras import initializers, regularizers, constraints
 from keras.engine import Layer, InputSpec
 # import matplotlib
 # matplotlib.use('Agg')
+from keras.legacy import interfaces
 from matplotlib import pyplot as plt
 from scipy.misc import imresize
 
@@ -125,21 +127,114 @@ def split_data(dataset, timesteps):
         return splitted_data
 
 
-def load_splitted_dataset(filepath, timesteps):
-    dataset = np.load(filepath)
+def load_splitted_dataset(split=0.3, timesteps=90):
+    normalized_transactions_filepath = "../../../datasets/berka_dataset/usable/normalized_transactions_months.npy"
+
+    dataset = np.load(normalized_transactions_filepath)
     dataset = split_data(dataset, timesteps)
-    return dataset
+
+    split_index = int(dataset.shape[0] * split)
+
+    train = dataset[:-split_index]
+    test = dataset[-split_index:]
+    return train, test, timesteps
 
 
-def load_resized_mnist():
+def load_resized_mnist(split=0.3, timesteps=100):
+    side = int(np.sqrt(timesteps))
+
     from keras.datasets import mnist
     (x_train, y_train), _ = mnist.load_data()
-    dataset = np.empty((60000, 10, 10))
+    dataset = np.empty((60000, side, side))
     for row in range(x_train.shape[0]):
-        dataset[row] = imresize(x_train[row], (10, 10))
+        dataset[row] = imresize(x_train[row], (side, side))
     dataset = (dataset / 255.0) * 2.0 - 1.0
-    dataset = dataset.reshape(60000, 10 * 10)
-    return dataset
+    dataset = dataset.reshape(60000, timesteps)
+
+    split_index = int(dataset.shape[0] * split)
+
+    train = dataset[:-split_index]
+    test = dataset[-split_index:]
+
+    return train, test, timesteps
+
+
+def generate_run_dir():
+    root_path = 'outputs'
+    if not os.path.exists(root_path):
+        os.mkdir(root_path)
+
+    current_datetime = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    run_dir = root_path + '/' + current_datetime
+    img_dir = run_dir + '/img'
+    model_dir = run_dir + '/models'
+    generated_datesets_dir = run_dir + '/generated_datasets'
+
+    os.mkdir(run_dir)
+    os.mkdir(img_dir)
+    os.mkdir(model_dir)
+    os.mkdir(generated_datesets_dir)
+
+    return run_dir, img_dir, model_dir, generated_datesets_dir
+
+
+def get_global_config():
+    batch_size = 64
+    epochs = 1000000
+    latent_dim = 2
+    img_frequency = 2500
+    loss_frequency = 2500
+    latent_space_frequency = 5000
+    model_save_frequency = 100000
+    dataset_generation_frequency = 100000
+    dataset_generation_size = 50000
+
+    n_generator = 1
+    n_critic = 5
+    generator_lr = 0.005
+    critic_lr = 0.005
+    gradient_penality_weight = 10
+    gamma = 0.5
+
+    lr_decay_factor = 0.5
+    lr_decay_steps = 200000
+
+    config = {
+        'batch_size': batch_size,
+        'epochs': epochs,
+        'latent_dim': latent_dim,
+        'img_frequency': img_frequency,
+        'loss_frequency': loss_frequency,
+        'latent_space_frequency': latent_space_frequency,
+        'model_save_frequency': model_save_frequency,
+        'dataset_generation_frequency': dataset_generation_frequency,
+        'dataset_generation_size': dataset_generation_size,
+        'lr_decay_factor': lr_decay_factor,
+        'lr_decay_steps': lr_decay_steps,
+        'n_generator': n_generator,
+        'n_critic': n_critic,
+        'gradient_penality_weight': gradient_penality_weight,
+        'gamma': gamma,
+        'generator_lr': generator_lr,
+        'critic_lr': critic_lr
+    }
+
+    return config
+
+
+def merge_config_and_save(config_2):
+    config = get_global_config()
+    config.update(config_2)
+
+    with open(config['run_dir'] + '/config.json', 'w') as f:
+        json.dump(config, f, indent=4, sort_keys=True)
+
+    return config
+
+
+def wasserstein_loss(y_true, y_pred):
+    return K.mean(y_true * y_pred)
 
 
 class MinibatchDiscrimination(Layer):
@@ -209,35 +304,63 @@ class MinibatchDiscrimination(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-def generate_run_dir():
-    root_path = 'outputs'
-    if not os.path.exists(root_path):
-        os.mkdir(root_path)
+class BatchNormalization(Layer):
+    """Batch normalization layer (Ioffe and Szegedy, 2014).
+    Normalize the activations of the previous layer at each batch,
+    i.e. applies a transformation that maintains the mean activation
+    close to 0 and the activation standard deviation close to 1.
+    # Arguments
+        axis: Integer, the axis that should be normalized
+            (typically the features axis).
+            For instance, after a `Conv2D` layer with
+            `data_format="channels_first"`,
+            set `axis=1` in `BatchNormalization`.
+        momentum: Momentum for the moving mean and the moving variance.
+        epsilon: Small float added to variance to avoid dividing by zero.
+        center: If True, add offset of `beta` to normalized tensor.
+            If False, `beta` is ignored.
+        scale: If True, multiply by `gamma`.
+            If False, `gamma` is not used.
+            When the next layer is linear (also e.g. `nn.relu`),
+            this can be disabled since the scaling
+            will be done by the next layer.
+        beta_initializer: Initializer for the beta weight.
+        gamma_initializer: Initializer for the gamma weight.
+        moving_mean_initializer: Initializer for the moving mean.
+        moving_variance_initializer: Initializer for the moving variance.
+        beta_regularizer: Optional regularizer for the beta weight.
+        gamma_regularizer: Optional regularizer for the gamma weight.
+        beta_constraint: Optional constraint for the beta weight.
+        gamma_constraint: Optional constraint for the gamma weight.
+    # Input shape
+        Arbitrary. Use the keyword argument `input_shape`
+        (tuple of integers, does not include the samples axis)
+        when using this layer as the first layer in a model.
+    # Output shape
+        Same shape as input.
+    # References
+        - [Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift](https://arxiv.org/abs/1502.03167)
+    """
 
-    current_datetime = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    run_dir = root_path + '/' + current_datetime
-    img_dir = run_dir + '/img'
-    model_dir = run_dir + '/models'
-    generated_datesets_dir = run_dir + '/generated_datasets'
-
-    os.mkdir(run_dir)
-    os.mkdir(img_dir)
-    os.mkdir(model_dir)
-    os.mkdir(generated_datesets_dir)
-
-    return run_dir, img_dir, model_dir, generated_datesets_dir
-
-
-def wasserstein_loss(y_true, y_pred):
-    return K.mean(y_true * y_pred)
-
-
-class BatchNormalizationGAN(Layer):
-    def __init__(self, axis=-1, momentum=0.99, epsilon=1e-3, center=True, scale=True,
-                 beta_initializer='zeros', gamma_initializer='ones', moving_mean_initializer='zeros', moving_variance_initializer='ones',
-                 beta_regularizer=None, gamma_regularizer=None, beta_constraint=None, gamma_constraint=None, **kwargs):
-        super(BatchNormalizationGAN, self).__init__(**kwargs)
+    @interfaces.legacy_batchnorm_support
+    def __init__(self,
+                 axis=-1,
+                 momentum=0.99,
+                 epsilon=1e-3,
+                 center=True,
+                 scale=True,
+                 beta_initializer='zeros',
+                 gamma_initializer='ones',
+                 moving_mean_initializer='zeros',
+                 moving_variance_initializer='ones',
+                 beta_regularizer=None,
+                 gamma_regularizer=None,
+                 beta_constraint=None,
+                 gamma_constraint=None,
+                 **kwargs):
+        self._trainable = True
+        self._trainable_tensor = K.variable(1, dtype='float32', name='trainable')
+        super(BatchNormalization, self).__init__(**kwargs)
         self.supports_masking = True
         self.axis = axis
         self.momentum = momentum
@@ -252,6 +375,19 @@ class BatchNormalizationGAN(Layer):
         self.gamma_regularizer = regularizers.get(gamma_regularizer)
         self.beta_constraint = constraints.get(beta_constraint)
         self.gamma_constraint = constraints.get(gamma_constraint)
+
+    @property
+    def trainable(self):
+        # Use cached value to avoid unnecessary get_value() calls
+        return self._trainable
+
+    @trainable.setter
+    def trainable(self, trainable):
+        trainable = bool(trainable)
+        # Change when different to avoid unnecessary set_value() calls
+        if self._trainable != trainable:
+            self._trainable = trainable
+            K.set_value(self._trainable_tensor, 1 if trainable else 0)
 
     def build(self, input_shape):
         dim = input_shape[self.axis]
@@ -336,14 +472,27 @@ class BatchNormalizationGAN(Layer):
                     self.gamma,
                     epsilon=self.epsilon)
 
-        # If the learning phase is *static* and set to inference:
         if training in {0, False}:
+            # If the learning phase is *static* and set to inference:
             return normalize_inference()
+        elif training is None:
+            # If it's undefined then if trainable tensor is on respect learning phase else set to false
+            training = K.switch(self._trainable_tensor, K.cast(K.learning_phase(), 'float32'),
+                                K.constant(0, dtype='float32'))
+            training._uses_learning_phase = True
 
         # If the learning is either dynamic, or set to training:
         normed_training, mean, variance = K.normalize_batch_in_training(
             inputs, self.gamma, self.beta, reduction_axes,
             epsilon=self.epsilon)
+
+        if K.backend() != 'cntk':
+            sample_size = K.prod([K.shape(inputs)[axis]
+                                  for axis in reduction_axes])
+            sample_size = K.cast(sample_size, dtype=K.dtype(inputs))
+
+            # sample variance - unbiased estimator of population variance
+            variance *= sample_size / (sample_size - (1.0 + self.epsilon))
 
         self.add_update([K.moving_average_update(self.moving_mean,
                                                  mean,
@@ -356,7 +505,7 @@ class BatchNormalizationGAN(Layer):
         # Pick the normalized form corresponding to the training phase.
         return K.in_train_phase(normed_training,
                                 normalize_inference,
-                                training=True)  # THIS IS THE PROBLEM, changed training=training into training=True
+                                training=training)
 
     def get_config(self):
         config = {
@@ -374,7 +523,7 @@ class BatchNormalizationGAN(Layer):
             'beta_constraint': constraints.serialize(self.beta_constraint),
             'gamma_constraint': constraints.serialize(self.gamma_constraint)
         }
-        base_config = super(BatchNormalizationGAN, self).get_config()
+        base_config = super(BatchNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
     def compute_output_shape(self, input_shape):

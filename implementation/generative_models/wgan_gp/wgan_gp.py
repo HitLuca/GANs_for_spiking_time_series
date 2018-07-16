@@ -1,6 +1,8 @@
-import sys
 import pickle
+import sys
+
 from keras.layers import *
+
 sys.path.append("..")
 import utils
 import wgan_gp_utils
@@ -85,7 +87,8 @@ class WGAN_GP:
                 inputs = [noise]
 
                 if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim, self._packing_degree))
+                    supporting_noise = np.random.normal(0, 1,
+                                                        (self._batch_size, self._latent_dim, self._packing_degree))
                     inputs.append(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))

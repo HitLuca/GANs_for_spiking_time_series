@@ -2,7 +2,6 @@ import pickle
 import sys
 
 import wgan_utils
-from keras.initializers import RandomNormal
 from keras.layers import *
 
 sys.path.append("..")
@@ -27,13 +26,10 @@ class WGAN:
         self._model_save_frequency = config['model_save_frequency']
         self._dataset_generation_frequency = config['dataset_generation_frequency']
         self._dataset_generation_size = config['dataset_generation_size']
-        self._packing_degree = config['packing_degree']
         self._run_dir = config['run_dir']
         self._img_dir = config['img_dir']
         self._model_dir = config['model_dir']
         self._generated_datesets_dir = config['generated_datesets_dir']
-        self._use_mbd = config['use_mbd']
-        self._use_packing = config['use_packing']
 
         self._epoch = 0
         self._losses = [[], []]
@@ -41,16 +37,13 @@ class WGAN:
 
     def _build_models(self):
         self._generator = wgan_utils.build_generator(self._latent_dim, self._timesteps)
-        self._critic = wgan_utils.build_critic(self._timesteps, self._use_mbd,
-                                               self._use_packing, self._packing_degree)
+        self._critic = wgan_utils.build_critic(self._timesteps)
 
         self._generator_model = wgan_utils.build_generator_model(self._generator, self._critic, self._generator_lr,
-                                                                 self._latent_dim, self._batch_size, self._timesteps,
-                                                                 self._use_packing, self._packing_degree)
+                                                                 self._latent_dim)
 
         self._critic_model = wgan_utils.build_critic_model(self._generator, self._critic, self._critic_lr,
-                                                           self._latent_dim, self._batch_size, self._timesteps,
-                                                           self._use_packing, self._packing_degree)
+                                                           self._latent_dim, self._timesteps)
 
         return self._generator, self._critic
 
@@ -65,16 +58,7 @@ class WGAN:
                 indexes = np.random.randint(0, dataset.shape[0], self._batch_size)
                 batch_transactions = dataset[indexes].reshape(self._batch_size, self._timesteps)
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
-
                 inputs = [batch_transactions, noise]
-
-                if self._use_packing:
-                    supporting_indexes = np.random.randint(0, dataset.shape[0], self._batch_size * self._packing_degree)
-                    supporting_transactions = dataset[supporting_indexes].reshape(self._batch_size, self._timesteps,
-                                                                                  self._packing_degree)
-                    supporting_noise = np.random.normal(0, 1,
-                                                        (self._batch_size, self._latent_dim, self._packing_degree))
-                    inputs.extend([supporting_transactions, supporting_noise])
 
                 critic_losses.append(self._critic_model.train_on_batch(inputs, [ones, neg_ones])[0])
 
@@ -85,11 +69,6 @@ class WGAN:
             for _ in range(self._n_generator):
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
                 inputs = [noise]
-
-                if self._use_packing:
-                    supporting_noise = np.random.normal(0, 1,
-                                                        (self._batch_size, self._latent_dim, self._packing_degree))
-                    inputs.extend(supporting_noise)
 
                 generator_losses.append(self._generator_model.train_on_batch(inputs, ones))
 
