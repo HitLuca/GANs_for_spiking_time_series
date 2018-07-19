@@ -1,6 +1,7 @@
 import pickle
 import sys
 
+import os
 import wgan_utils
 from keras.layers import *
 
@@ -147,10 +148,12 @@ class WGAN:
             pickle.dump(config, f)
 
     def _save_models(self):
-        self._generator.save(self._model_dir + '/generator.h5')
-        self._generator_model.save(self._model_dir + '/generator_model.h5')
-        self._critic_model.save(self._model_dir + '/critic_model.h5')
-        self._critic.save(self._model_dir + '/critic.h5')
+        dir = self._model_dir + '/' + str(self._epoch) + '/'
+        os.mkdir(dir)
+        self._generator.save(dir + '/generator.h5')
+        self._generator_model.save(dir + '/generator_model.h5')
+        self._critic_model.save(dir + '/critic_model.h5')
+        self._critic.save(dir + '/critic.h5')
 
     def _generate_dataset(self, epoch, dataset_generation_size):
         z_samples = np.random.normal(0, 1, (dataset_generation_size, self._latent_dim))

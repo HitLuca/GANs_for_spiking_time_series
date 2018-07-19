@@ -64,6 +64,8 @@ def build_encoder(latent_dim, timesteps, encoder_type):
 
         encoded = Flatten()(encoded)
         encoded = Dense(latent_dim)(encoded)
+        encoded = utils.BatchNormalization()(encoded)
+        encoded = LeakyReLU(0.2)(encoded)
 
     encoder = Model(encoder_inputs, encoded, 'encoder')
     return encoder

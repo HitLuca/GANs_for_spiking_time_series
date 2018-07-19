@@ -8,8 +8,8 @@ from ae_utils import AE_type
 dataset, _, timesteps = utils.load_splitted_dataset()
 # dataset, _, timesteps = utils.load_resized_mnist()
 
-encoder_type = AE_type.dense
-decoder_type = AE_type.dense
+encoder_type = AE_type.cnn
+decoder_type = AE_type.cnn
 
 run_dir, img_dir, model_dir, generated_datesets_dir = utils.generate_run_dir()
 

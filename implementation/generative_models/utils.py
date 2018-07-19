@@ -183,22 +183,22 @@ def get_global_config():
     batch_size = 64
     epochs = 1000000
     latent_dim = 2
-    img_frequency = 2500
-    loss_frequency = 2500
-    latent_space_frequency = 5000
+    img_frequency = 10000
+    loss_frequency = 5000
+    latent_space_frequency = 50000
     model_save_frequency = 100000
     dataset_generation_frequency = 100000
     dataset_generation_size = 50000
 
     n_generator = 1
     n_critic = 5
-    generator_lr = 0.005
-    critic_lr = 0.005
+    generator_lr = 0.001
+    critic_lr = 0.001
     gradient_penality_weight = 10
     gamma = 0.5
 
     lr_decay_factor = 0.5
-    lr_decay_steps = 200000
+    lr_decay_steps = epochs/4
 
     config = {
         'batch_size': batch_size,

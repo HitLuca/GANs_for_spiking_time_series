@@ -36,6 +36,10 @@ def build_encoder(latent_dim, timesteps):
 
     encoded = Flatten()(encoded)
 
+    encoded = Dense(128)(encoded)
+    encoded = utils.BatchNormalization()(encoded)
+    encoded = Activation('tanh')(encoded)
+
     z_mean = Dense(latent_dim)(encoded)
     z_log_var = Dense(latent_dim)(encoded)
 

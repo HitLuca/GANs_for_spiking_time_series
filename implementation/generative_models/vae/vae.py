@@ -1,6 +1,6 @@
 import pickle
 import sys
-
+import os
 import vae_utils
 from keras.layers import *
 
@@ -103,10 +103,12 @@ class VAE:
             pickle.dump(self._losses, f)
 
     def _save_models(self):
-        self._encoder.save(self._model_dir + '/encoder.h5')
-        self._decoder.save(self._model_dir + '/decoder.h5')
-        self._vae_model.save(self._model_dir + '/vae_model.h5')
-        self._generator.save(self._model_dir + '/generator.h5')
+        dir = self._model_dir + '/' + str(self._epoch) + '/'
+        os.mkdir(dir)
+        self._encoder.save(dir + '/encoder.h5')
+        self._decoder.save(dir + '/decoder.h5')
+        self._vae_model.save(dir + '/vae_model.h5')
+        self._generator.save(dir + '/generator.h5')
 
     def _generate_dataset(self):
         z_samples = np.random.normal(0, 1, (self._dataset_generation_size, self._latent_dim))
