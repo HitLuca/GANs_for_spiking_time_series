@@ -1,8 +1,9 @@
 import json
 
 import numpy as np
-from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib import pyplot as plt
+
 sns.set()
 
 
@@ -77,7 +78,7 @@ def plot_metrics(histories, labels, title, save, save_filename):
             axis = np.arange((len(model_scores)))
             plt.bar(axis + bar_width * i, model_scores, width=bar_width, edgecolor='black', label=model_name)
             plt.legend()
-        plt.xticks(axis + bar_width * ((len(models_names) -1) / 2), labels, rotation=45)
+        plt.xticks(axis + bar_width * ((len(models_names) - 1) / 2), labels, rotation=90)
         plt.ylim(ymin=max(min_score - 0.03, 0), ymax=min(max_score + 0.03, 1))
         plt.ylabel(metric)
     if save:
