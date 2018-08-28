@@ -49,7 +49,6 @@ class Evaluator:
 
         classified = Conv1D(32, 3, padding='same')(classified)
         classified = LeakyReLU(0.2)(classified)
-
         classified = Flatten()(classified)
 
         classified = Dense(1, activation='sigmoid')(classified)
@@ -94,7 +93,7 @@ class Evaluator:
             if classifier == 'nn':
                 classifiers.append(self._build_nn_classifier())
             if classifier == 'svm':
-                classifiers.append(BaggingClassifier(SVC()))
+                classifiers.append(SVC())
             if classifier == 'rf':
                 classifiers.append(RandomForestClassifier())
             if classifier == 'dt':
