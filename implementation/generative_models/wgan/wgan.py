@@ -1,7 +1,7 @@
+import os
 import pickle
 import sys
 
-import os
 import wgan_utils
 from keras.layers import *
 

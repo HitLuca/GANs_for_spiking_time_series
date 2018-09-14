@@ -1,6 +1,7 @@
+import os
 import pickle
 import sys
-import os
+
 import vae_utils
 from keras.layers import *
 

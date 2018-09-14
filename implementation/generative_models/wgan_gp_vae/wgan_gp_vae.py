@@ -97,7 +97,7 @@ class WGAN_GP_VAE:
             self._losses[2].append(vae_loss)
 
             print("%d [C loss: %+.6f] [G loss: %+.6f] [VAE loss: %+.6f]" % (
-            self._epoch, critic_loss, generator_loss, vae_loss))
+                self._epoch, critic_loss, generator_loss, vae_loss))
 
             if self._epoch % self._loss_frequency == 0:
                 self._save_losses()

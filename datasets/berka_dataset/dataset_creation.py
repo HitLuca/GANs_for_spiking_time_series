@@ -66,7 +66,7 @@ def generate_normalized_transactions(transactions):
     transactions_min = np.min(normalized_transactions)
     transactions_max = np.max(normalized_transactions)
     normalized_transactions = 2 * (
-    (normalized_transactions - transactions_min) / (transactions_max - transactions_min)) - 1
+        (normalized_transactions - transactions_min) / (transactions_max - transactions_min)) - 1
 
     return normalized_transactions
 

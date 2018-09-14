@@ -1,4 +1,5 @@
 import sys
+
 import numpy as np
 
 sys.path.append("..")
@@ -36,8 +37,8 @@ sampled = np.ones((elements, timesteps)) * dataset_mode
 spikes_positive = np.random.normal(loc=dataset_mean_positive, scale=dataset_std_positive, size=(elements, timesteps))
 spikes_negative = np.random.normal(loc=dataset_mean_negative, scale=dataset_std_negative, size=(elements, timesteps))
 
-probabilities_positive = (np.random.random_sample((elements, timesteps)) < spike_probability/2)
-probabilities_negative = (np.random.random_sample((elements, timesteps)) < spike_probability/2)
+probabilities_positive = (np.random.random_sample((elements, timesteps)) < spike_probability / 2)
+probabilities_negative = (np.random.random_sample((elements, timesteps)) < spike_probability / 2)
 sampled[probabilities_positive] = spikes_positive[probabilities_positive]
 sampled[probabilities_negative] = spikes_negative[probabilities_negative]
 

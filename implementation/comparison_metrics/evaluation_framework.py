@@ -4,18 +4,17 @@ from keras import Input, Model
 from keras.callbacks import *
 from keras.layers import Dense, Conv1D, LeakyReLU, MaxPooling1D, Flatten, Lambda
 from sklearn import metrics
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, BaggingClassifier
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.svm import SVC, SVR
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 sys.path.append("..")
 from generative_models import utils
 import metrics_utils
 
 
-class Evaluator:
-    def __init__(self, models_list, real_data_filepath, split, elements, timesteps, regression_targets,
+class EvaluationFramework:
+    def __init__(self, models_list, real_data_filepath, split, elements, timesteps,
                  flattening_range, iteration):
         self._generated_data = None
         self._histories_regression = {}
@@ -27,7 +26,6 @@ class Evaluator:
         self._split = split
         self._elements = elements
         self._timesteps = timesteps
-        self._regression_targets = regression_targets
         self._base_folder = ''
         self._flattening_range = flattening_range
         self._iteration = iteration
@@ -60,9 +58,6 @@ class Evaluator:
         return classifier
 
     def _build_classifiers(self):
-        if 'nn' in self._models_list:
-            assert self._models_list[0] == 'nn'
-
         classifiers = []
         for classifier in self._models_list:
             if classifier == 'nn':
@@ -90,23 +85,22 @@ class Evaluator:
 
         classifiers = self._build_classifiers()
 
-        if 'nn' in self._models_list:
-            print('nn')
-            split = int((x_train.shape[0]) * 0.2)
+        for model_name, classifier in zip(self._models_list, classifiers):
+            print(model_name)
+            if model_name == 'nn':
+                split = int((x_train.shape[0]) * 0.2)
 
-            x_val = x_train[:split]
-            x_train = x_train[split:]
+                x_val_nn = x_train[:split]
+                x_train_nn = x_train[split:]
 
-            y_val = y_train[:split]
-            y_train = y_train[split:]
+                y_val_nn = y_train[:split]
+                y_train_nn = y_train[split:]
 
-            early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3)
-            classifiers[0].fit(x_train, y_train, validation_data=(x_val, y_val), epochs=100, verbose=0,
+                early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3)
+                classifier.fit(x_train_nn, y_train_nn, validation_data=(x_val_nn, y_val_nn), epochs=100, verbose=0,
                                callbacks=[early_stopping])
-
-        for i, classifier in enumerate(classifiers[1:]):
-            print(self._models_list[i + 1])
-            classifier.fit(x_train, y_train)
+            else:
+                classifier.fit(x_train, y_train)
 
         histories = {}
         for i, classifier in enumerate(classifiers):
@@ -139,11 +133,15 @@ class Evaluator:
             history_classification = self._evaluate_data_classification(postprocess)
             self._histories_classification[labels[index]] = history_classification
 
-        metrics_utils.save_to_json(self._base_folder + '/' + str(self._iteration) + '_classification_scores_' + title + '_' + str(self._flattening_range) + '.json',
-                                   self._histories_classification)
+        metrics_utils.save_to_json(
+            self._base_folder + '/' + str(self._iteration) + '_classification_scores_' + title + '_' + str(
+                self._flattening_range) + '.json',
+            self._histories_classification)
 
         metrics_utils.plot_metrics(self._histories_classification, labels, title, True,
-                                   self._base_folder + '/' + str(self._iteration) + '_' + title + '_classification' + '_' + str(self._flattening_range))
+                                   self._base_folder + '/' + str(
+                                       self._iteration) + '_' + title + '_classification' + '_' + str(
+                                       self._flattening_range))
 
     def set_base_folder(self, base_folder):
         self._base_folder = base_folder
