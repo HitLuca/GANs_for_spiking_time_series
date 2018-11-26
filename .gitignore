@@ -187,7 +187,9 @@ datasets/berka_dataset/data_berka.zip
 
 outputs/
 
-implementation/comparison_metrics/*/
 das-4_results/
 tests_folder/
 thesis_images_generation/
+
+implementation/comparison_metrics/backup_comparisons/
+implementation/comparison_metrics/models_comparison/

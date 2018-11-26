@@ -1,5 +1,3 @@
-import sys
-
 from keras import Input, Model
 from keras.callbacks import *
 from keras.layers import Dense, Conv1D, LeakyReLU, MaxPooling1D, Flatten, Lambda
