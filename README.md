@@ -1,2 +1,2 @@
-# Generative Adversarial Networks for time-series generation
-Internship project for the final thesis at UvA
+# Generating spiking time series with Generative Adversarial Networks
+Internship project for my final thesis at UvA
