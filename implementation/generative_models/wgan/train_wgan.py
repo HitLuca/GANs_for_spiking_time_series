@@ -1,8 +1,5 @@
-import sys
-
-sys.path.append("..")
-import utils
-from wgan import WGAN
+from generative_models import utils
+from generative_models.wgan.wgan_model import WGAN
 
 dataset, _, timesteps = utils.load_splitted_dataset()
 # dataset, _, timesteps = utils.load_resized_mnist()

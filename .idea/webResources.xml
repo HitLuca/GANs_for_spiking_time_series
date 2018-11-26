@@ -6,6 +6,9 @@
         <entryData>
           <resourceRoots>
             <path value="file://$PROJECT_DIR$/code/mnist" />
+            <path value="file://$PROJECT_DIR$/datasets" />
+            <path value="file://$PROJECT_DIR$/das-4_results" />
+            <path value="file://$PROJECT_DIR$/thesis_images_generation" />
           </resourceRoots>
         </entryData>
       </entry>

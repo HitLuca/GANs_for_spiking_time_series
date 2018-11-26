@@ -1,12 +1,8 @@
-import sys
-
 import keras
 from keras import Model
 from keras.layers import *
 from keras.optimizers import RMSprop
-
-sys.path.append("..")
-import utils
+from generative_models import utils
 
 
 def build_generator(latent_dim, timesteps):

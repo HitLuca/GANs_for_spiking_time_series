@@ -1,8 +1,5 @@
-import sys
-
-sys.path.append("..")
-import utils
-from wgan_gp_vae import WGAN_GP_VAE
+from generative_models import utils
+from generative_models.wgan_gp_vae.wgan_gp_vae_model import WGAN_GP_VAE
 
 dataset, _, timesteps = utils.load_splitted_dataset()
 # dataset, _, timesteps = utils.load_resized_mnist()

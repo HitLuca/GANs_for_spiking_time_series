@@ -1,9 +1,5 @@
-import sys
-
-from vae import VAE
-
-sys.path.append("..")
-import utils
+from generative_models.vae.vae_model import VAE
+from generative_models import utils
 
 dataset, _, timesteps = utils.load_splitted_dataset()
 # dataset, _, timesteps = utils.load_resized_mnist()

@@ -1,12 +1,8 @@
-import sys
-
 from keras import Model
 from keras.layers import *
 from keras.losses import mean_squared_error
 from keras.optimizers import Adam
-
-sys.path.append("..")
-import utils
+from generative_models import utils
 
 
 def build_encoder(latent_dim, timesteps):

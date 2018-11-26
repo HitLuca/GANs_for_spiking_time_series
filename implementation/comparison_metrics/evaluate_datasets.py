@@ -1,9 +1,5 @@
 import os
-import sys
-
-from evaluation_framework import EvaluationFramework
-
-sys.path.append("..")
+from comparison_metrics.evaluation_framework import EvaluationFramework
 
 timesteps = 90
 elements = 10
