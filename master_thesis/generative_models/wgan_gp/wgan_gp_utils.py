@@ -1,8 +1,10 @@
 from functools import partial
+
 from keras import Model
 from keras.layers import *
 from keras.layers.merge import _Merge
 from keras.optimizers import Adam
+
 from generative_models import utils
 
 

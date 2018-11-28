@@ -2,6 +2,7 @@ from keras import Model
 from keras.layers import *
 from keras.losses import mean_squared_error
 from keras.optimizers import Adam
+
 from generative_models import utils
 
 

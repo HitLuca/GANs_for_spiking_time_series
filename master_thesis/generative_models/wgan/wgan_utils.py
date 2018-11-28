@@ -2,6 +2,7 @@ import keras
 from keras import Model
 from keras.layers import *
 from keras.optimizers import RMSprop
+
 from generative_models import utils
 
 

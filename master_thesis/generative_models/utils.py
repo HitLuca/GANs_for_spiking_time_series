@@ -128,7 +128,7 @@ def split_data(dataset, timesteps):
 
 
 def load_splitted_dataset(split=0.3, timesteps=90,
-                          dataset_filepath='../../../datasets/berka_dataset/usable/normalized_transactions_months.npy'):
+                          dataset_filepath='../datasets/berka_dataset/usable/normalized_transactions_months.npy'):
     normalized_transactions_filepath = dataset_filepath
 
     dataset = np.load(normalized_transactions_filepath)
@@ -160,10 +160,10 @@ def load_resized_mnist(split=0.3, timesteps=100):
     return train, test, timesteps
 
 
-def generate_run_dir():
-    root_path = 'outputs'
+def generate_run_dir(model_type):
+    root_path = '../outputs/' + model_type
     if not os.path.exists(root_path):
-        os.mkdir(root_path)
+        os.makedirs(root_path)
 
     current_datetime = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 

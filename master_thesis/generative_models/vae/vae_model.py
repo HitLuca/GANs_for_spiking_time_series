@@ -1,8 +1,10 @@
 import os
 import pickle
-from generative_models.vae import vae_utils
+
 from keras.layers import *
+
 from generative_models import utils
+from generative_models.vae import vae_utils
 
 
 class VAE:

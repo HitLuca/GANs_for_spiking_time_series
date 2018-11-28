@@ -5,8 +5,9 @@ from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from generative_models import utils
+
 from comparison_metrics import metrics_utils
+from generative_models import utils
 
 
 class EvaluationFramework:
