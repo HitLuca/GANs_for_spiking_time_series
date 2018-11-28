@@ -7,12 +7,12 @@ This project aims at generating spiking time series patterns using Generative Ad
 
 ## Project structure
 
-The ```implementation``` folder contains the generative models used, along with the scripts for metrics calculation.
+The ```master_thesis/generative_models``` folder contains the generative models used, along with the scripts for metrics calculation in ```master_thesis/comparison_metrics```.
 
 The ```datasets``` folder contains the datasets used (at the moment only the [Berka dataset](https://sorry.vse.cz/~berka/challenge/pkdd1999/berka.htm)
 
 
-Results are saved into the ```outputs``` folders on each sub-model directory.
+Results are saved into the ```outputs``` folders, divided into subfolders for each model.
 
 ```utils.py``` contains meta-variables used at training time.
 
@@ -27,16 +27,12 @@ Necessary libraries are indicated in the ```requirements.txt```, to install them
 
 ```pip install -r requirements.txt```
 
-### Running the algorithms
+### Training the models
 As the Java server is now integrated in the project, there is no need to start it separately.
 
-The ```experiment_runner.py``` file contains all the code necessary to train the predictive models on each log file and evaluate them with each inference method.
+The ```train_model.py``` file contains all the code necessary to train a generative model on the berka dataset. The model type is passed as an argument.
 
-### Training the models
-Just choose your model of choice and run the ```train_name_of_model.py``` script. Variables that can be changed are located in ```train_name_of_model.py``` and ```utils.py``` scripts.
+The outputs of the model are stored in the ```outputs/model_name``` folder.
 
-The outputs of the model are stored in the corresponding ```outputs``` folder.
-
-### Evaluating the models
-Copy the output folder of the various models into the ```comparison_datasets``` folder, and then run the ```evaluate_datasets.py``` scripts
-
+### Comparing different models
+First, move the output folder for each model in the ```comparison_metrics/comparison_datasets``` folder, then run the ```evaluate_datasets.py``` script in the ```comparison_metrics``` folder.

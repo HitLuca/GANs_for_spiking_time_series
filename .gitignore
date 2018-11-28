@@ -175,21 +175,9 @@ venv.bak/
 
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebook
-
-.idea/inspectionProfiles/
-.idea/markdown-navigator/
-.idea/other.xml
-
 datasets/berka_dataset/original/
 datasets/berka_dataset/parsed/
 datasets/berka_dataset/usable/
 datasets/berka_dataset/data_berka.zip
 
 outputs/
-
-das-4_results/
-thesis_images_generation/
-
-master_thesis/comparison_metrics/backup_comparisons/
-master_thesis/comparison_metrics/models_comparison/
-master_thesis/comparison_metrics/comparison_datasets/
