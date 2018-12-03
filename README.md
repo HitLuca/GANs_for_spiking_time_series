@@ -23,9 +23,7 @@ Before starting, run the ```setup.py``` script, that will automatically download
 
 
 ### Prerequisites
-Necessary libraries are indicated in the ```requirements.txt```, to install them run
-
-```pip install -r requirements.txt```
+To install the python environment for this project, refer to the [Pipenv setup guide](https://pipenv.readthedocs.io/en/latest/basics/)
 
 ### Training the models
 As the Java server is now integrated in the project, there is no need to start it separately.
