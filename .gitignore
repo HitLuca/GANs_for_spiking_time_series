@@ -181,3 +181,7 @@ datasets/berka_dataset/usable/
 datasets/berka_dataset/data_berka.zip
 
 outputs/
+.idea/webServers.xml
+
+das-4_results/
+master_thesis/comparison_metrics/backup_comparisons/
